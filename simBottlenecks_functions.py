@@ -3,7 +3,7 @@ import os
 import sys
 import json
 import string
-import cPickle
+import _pickle as cPickle
 import pprint
 import dadi
 import argparse
@@ -75,7 +75,7 @@ def readConstantsTest():
                 pklF = open(pklfile, 'rb')
                 paramDict = cPickle.load(pklF)
                 pklF.close()
-                print pklfile
+                print(pklfile)
                 pprint.pprint(paramDict)
 
 
@@ -511,7 +511,7 @@ def simSexBiasedBottleneck(pklfile):
     elif inParams['chromType'] == 'X':
         reductionFn = fX
     else:
-        print 'error: chromType must be either A or X, got {}'.format(inParams['chromType'])
+        print('error: chromType must be either A or X, got {}'.format(inParams['chromType']))
     reductionFactors = array([ reductionFn(p) for p in inParams['propFemales']] )     # from the coalescent
     effSizes = inParams['sizes'] * reductionFactors   # effective sizes
     

@@ -201,7 +201,7 @@ def threeEpochGrowth_P(params, ns, pts):
     return fs
 
 
-def prior_onegrow_mig_Eur((nu1F, nu2B, nu2F, Tp, T), n1, pts):
+def prior_onegrow_mig_Eur(params, n1, pts):
     """
     Model with growth, split, bottleneck in pop2, exp recovery, migration
 
@@ -215,6 +215,8 @@ def prior_onegrow_mig_Eur((nu1F, nu2B, nu2F, Tp, T), n1, pts):
     n1,n2: Size of fs to generate.
     pts: Number of points to use in grid for evaluation.
     """
+    nu1F, nu2B, nu2F, Tp, T = params
+
     # Define the grid we'll use
     xx = yy = dadi.Numerics.default_grid(pts)
 
@@ -234,12 +236,15 @@ def prior_onegrow_mig_Eur((nu1F, nu2B, nu2F, Tp, T), n1, pts):
 
 
 
-def OutOfAfrica((nuAf, nuB, nuEu0, nuEu, nuAs0, nuAs, 
-                 mAfB, mAfEu, mAfAs, mEuAs, TAf, TB, TEuAs),
-                 (n1,n2,n3), pts):
+def OutOfAfrica(params1,
+                 params2, pts):
     """
     Out-of-Africa model from Gutenkunst (2009): This model involves a size change in the ancestral population, a split, another split, and then exponential growth of populations 1 and 2. (The from dadi import line imports those modules from the dadi namespace into the local namespace, so we don't have to type dadi. to access them    
     """
+    (nuAf, nuB, nuEu0, nuEu, nuAs0, nuAs, 
+                 mAfB, mAfEu, mAfAs, mEuAs, TAf, TB, TEuAs) = params1
+    (n1,n2,n3) = params2
+
     from dadi import Numerics, PhiManip, Integration, Spectrum
     xx = Numerics.default_grid(pts)
 
@@ -262,13 +267,16 @@ def OutOfAfrica((nuAf, nuB, nuEu0, nuEu, nuAs0, nuAs,
     fs = Spectrum.from_phi(phi, (n1,n2,n3), (xx,xx,xx))
     return fs
 
-def OutOfAfricaTwoPop((nuAf, nuB, nuEu0, nuEu, 
-                       mAfB, mAfEu, TAf, TB, TEuAs),
-                 (n1,n2), pts):
+def OutOfAfricaTwoPop(params1, params2, pts):
     """
     2 populations only from Out-of-Africa model from Gutenkunst (2009): This model involves a size change in the ancestral population, a split, another split, and then exponential growth of populations 1 and 2. (The from dadi import line imports those modules from the dadi namespace into the local namespace, so we don't have to type dadi. to access them    
     """
     from dadi import Numerics, PhiManip, Integration, Spectrum
+
+    (nuAf, nuB, nuEu0, nuEu, 
+                       mAfB, mAfEu, TAf, TB, TEuAs) = params1
+    (n1,n2) = params2
+
     xx = Numerics.default_grid(pts)
 
     phi = PhiManip.phi_1D(xx)
@@ -295,11 +303,14 @@ def OutOfAfricaTwoPop((nuAf, nuB, nuEu0, nuEu,
     return fs
 
 # def OutOfAfricaAfr((nuAf, nuB, TAf, TB, TEuAs), n1, pts):
-def OutOfAfricaAfr((nuAf, nuB, nuEu0, nuEu, nuAs0, nuAs, mAfB, mAfEu, mAfAs, mEuAs, TAf, TB, TEuAs), n1, pts):
+def OutOfAfricaAfr(params, n1, pts):
     """
     1 population only from Out-of-Africa model from Gutenkunst (2009): This model involves a size change in the ancestral population, a split, another split, and then exponential growth of populations 1 and 2. (The from dadi import line imports those modules from the dadi namespace into the local namespace, so we don't have to type dadi. to access them    
     """
     from dadi import Numerics, PhiManip, Integration, Spectrum
+
+    (nuAf, nuB, nuEu0, nuEu, nuAs0, nuAs, mAfB, mAfEu, mAfAs, mEuAs, TAf, TB, TEuAs) = params
+
     xx = Numerics.default_grid(pts)
 
     phi = PhiManip.phi_1D(xx)
@@ -310,12 +321,15 @@ def OutOfAfricaAfr((nuAf, nuB, nuEu0, nuEu, nuAs0, nuAs, mAfB, mAfEu, mAfAs, mEu
     return fs
 
 # def OutOfAfricaEur((nuAf, nuB, nuEu0, nuEu, TAf, TB, TEuAs), n1, pts):
-def OutOfAfricaEur((nuAf, nuB, nuEu0, nuEu, nuAs0, nuAs, mAfB, mAfEu, mAfAs, mEuAs, TAf, TB, TEuAs), n1, pts):
+def OutOfAfricaEur(params, n1, pts):
     
     """
     1 population only from Out-of-Africa model from Gutenkunst (2009): This model involves a size change in the ancestral population, a split, another split, and then exponential growth of populations 1 and 2. (The from dadi import line imports those modules from the dadi namespace into the local namespace, so we don't have to type dadi. to access them    
     """
     from dadi import Numerics, PhiManip, Integration, Spectrum
+
+    (nuAf, nuB, nuEu0, nuEu, nuAs0, nuAs, mAfB, mAfEu, mAfAs, mEuAs, TAf, TB, TEuAs) = params
+
     xx = Numerics.default_grid(pts)
 
     phi = PhiManip.phi_1D(xx)
@@ -329,12 +343,15 @@ def OutOfAfricaEur((nuAf, nuB, nuEu0, nuEu, nuAs0, nuAs, mAfB, mAfEu, mAfAs, mEu
 
 
 # def OutOfAfricaAsn((nuAf, nuB, nuAs0, nuAs, TAf, TB, TEuAs), n1, pts):
-def OutOfAfricaAsn((nuAf, nuB, nuEu0, nuEu, nuAs0, nuAs, mAfB, mAfEu, mAfAs, mEuAs, TAf, TB, TEuAs), n1, pts):
+def OutOfAfricaAsn(params, n1, pts):
 
     """
     1 population only from Out-of-Africa model from Gutenkunst (2009): This model involves a size change in the ancestral population, a split, another split, and then exponential growth of populations 1 and 2. (The from dadi import line imports those modules from the dadi namespace into the local namespace, so we don't have to type dadi. to access them    
     """
     from dadi import Numerics, PhiManip, Integration, Spectrum
+
+    (nuAf, nuB, nuEu0, nuEu, nuAs0, nuAs, mAfB, mAfEu, mAfAs, mEuAs, TAf, TB, TEuAs) = params
+    
     xx = Numerics.default_grid(pts)
 
     phi = PhiManip.phi_1D(xx)
@@ -346,12 +363,15 @@ def OutOfAfricaAsn((nuAf, nuB, nuEu0, nuEu, nuAs0, nuAs, mAfB, mAfEu, mAfAs, mEu
     return fs
 
 
-def OOAEur((nuAf, nuB, nuEu0, nuEu, TAf, TB, TEuAs), n1, pts):
+def OOAEur(params, n1, pts):
     """
     same as OutOfAfricaEur but has shorter signature with only necessary params
     1 population only from Out-of-Africa model from Gutenkunst (2009): This model involves a size change in the ancestral population, a split, another split, and then exponential growth of populations 1 and 2. (The from dadi import line imports those modules from the dadi namespace into the local namespace, so we don't have to type dadi. to access them    
     """
     from dadi import Numerics, PhiManip, Integration, Spectrum
+
+    (nuAf, nuB, nuEu0, nuEu, TAf, TB, TEuAs) = params
+
     xx = Numerics.default_grid(pts)
 
     phi = PhiManip.phi_1D(xx)
@@ -364,13 +384,16 @@ def OOAEur((nuAf, nuB, nuEu0, nuEu, TAf, TB, TEuAs), n1, pts):
 
 
 
-def OOAAsn((nuAf, nuB, nuAs0, nuAs, TAf, TB, TEuAs), n1, pts):
+def OOAAsn(params, n1, pts):
     """
     same as OutOfAfricaAsn but has shorter signature with only necessary params
     
     1 population only from Out-of-Africa model from Gutenkunst (2009): This model involves a size change in the ancestral population, a split, another split, and then exponential growth of populations 1 and 2. (The from dadi import line imports those modules from the dadi namespace into the local namespace, so we don't have to type dadi. to access them    
     """
     from dadi import Numerics, PhiManip, Integration, Spectrum
+
+    (nuAf, nuB, nuAs0, nuAs, TAf, TB, TEuAs) = params
+
     xx = Numerics.default_grid(pts)
 
     phi = PhiManip.phi_1D(xx)
@@ -384,14 +407,14 @@ def OOAAsn((nuAf, nuB, nuAs0, nuAs, TAf, TB, TEuAs), n1, pts):
 
 
 # TODO finish and test
-def gravel_eur_single_pop((nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu), ns, pts):
+def gravel_eur_single_pop(params, ns, pts):
     """
     A one-population model used to model European out-of-Africa demography.
     Tennesen et al model
     timegrowthEu
     """
-
     # params used below: TAf, nuAf0, TEuAs, TB, timerowthEu, nuEu0, nuEu1, initialgrowth, nuEu2, nuEu1
+    (nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu) = params
     xx = Numerics.default_grid(pts)
 
     #first step: a single population
@@ -417,18 +440,19 @@ def gravel_eur_single_pop((nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, time
     return fs
 
 
-def gravel_eur_single_pop_evalLik((nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu), ns, pts, LA, LX):
+def gravel_eur_single_pop_evalLik(params, ns, pts, LA, LX):
     """
     convenience function to evaluate likelihood gravel function
     """
+    (nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu) = params
 
-
-def gravel_eur_single_pop_LRT((nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu), ns, pts, LA, LX, modelType):
+def gravel_eur_single_pop_LRT(params, ns, pts, LA, LX, modelType):
     """
     chrX LRT on CEU gravel model extrapolated single-pop, more complex
     TB: Length of bottleneck (in units of 2*Na generations) -- guess
     """
 
+    (nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu) = params
     fitDict = {'A': {}, 'X2': {}, 'X1': {}, 'X0': {}}   # TODO put in wrapper function?
     # TODO update constants below
 
@@ -1045,8 +1069,8 @@ def threeEpoch(outdir, tau1, tau2, nu1, nu2, numIters = 1):
 
                 cmd = 'nice ms {0} 1000 -t {1} -r {2} 5000 -eN {3} {4}'.format(numChroms, theta, rho, tau, nu)
                 if i == 0:
-                    print 'p = {0}, {1}'.format(currProp, chrom)
-                    print cmd
+                    print('p = {0}, {1}'.format(currProp, chrom))
+                    print(cmd)
 
                 # make spectrum from ms simulation without writing to file
                 ms_fs = dadi.Spectrum.from_ms_file(os.popen(cmd), mask_corners=True, average=False)
@@ -1142,7 +1166,7 @@ def singleSizeChange(outdir, nu = 0.1, tauDefault = 0.005, oneFilePerIter=False,
                     else:
                         cmd = 'ms {} 1 -t {} -r {} 5000 -eN {} {}'.format(numChroms, theta, rho, tau, nu)
                     if i == 0:       ## print each unique command once
-                        print 'p = {0}, {1}\n{2}'.format(currProp, chrom, cmd)
+                        print('p = {0}, {1}\n{2}'.format(currProp, chrom, cmd))
                     if writeMsFile:
                         msfile = base + '.ms'
                         cmd += '> {}'.format(msfile)
@@ -1159,7 +1183,7 @@ def singleSizeChange(outdir, nu = 0.1, tauDefault = 0.005, oneFilePerIter=False,
                     cmd = 'ms {} {} -t {} -eN {} {}'.format(numChroms, numIters, theta, tau, nu)
                 else:
                     cmd = 'ms {} {} -t {} -r {} 5000 -eN {} {}'.format(numChroms, numIters, theta, rho, tau, nu)
-                print 'p = {0}, {1}\n{2}'.format(currProp, chrom, cmd)
+                print('p = {0}, {1}\n{2}'.format(currProp, chrom, cmd))
                 if writeMsFile:
                     msfile = base + '.ms'
                     cmd += '> {}'.format(msfile)
@@ -1345,11 +1369,11 @@ def fitTwoEpoch(infile, outfile, modelfile, isCluster=True, nuFixed=None, tauFix
     lower_bound = [1e-8, 1e-8]
     if nuFixed != None:
         if (nuFixed < lower_bound[0]) or (nuFixed > upper_bound[0]):
-            print 'ERROR nuFixed {0} out of bounds: {1} {2}. exiting'.format(nuFixed, lower_bound[0], upper_bound[0])
+            print('ERROR nuFixed {0} out of bounds: {1} {2}. exiting'.format(nuFixed, lower_bound[0], upper_bound[0]))
             exit()
     if tauFixed != None:
         if (tauFixed < lower_bound[1]) or (tauFixed > upper_bound[1]):
-            print 'ERROR tauFixed {0} out of bounds: {1} {2}. exiting'.format(tauFixed, lower_bound[1], upper_bound[1])
+            print('ERROR tauFixed {0} out of bounds: {1} {2}. exiting'.format(tauFixed, lower_bound[1], upper_bound[1]))
             exit()
 
     func_ex = dadi.Numerics.make_extrap_log_func(func)
@@ -1402,15 +1426,15 @@ def fitTwoEpochPois(infile, outfile, modelfile, isCluster=True, nuFixed=None, ta
     lower_bound = [100, 1e-8, 1e-8]
     if thetaFixed != None:
         if (thetaFixed < lower_bound[0]) or (thetaFixed > upper_bound[0]):
-            print 'ERROR thetaFixed {0} out of bounds: {1} {2}. exiting'.format(thetaFixed, lower_bound[0], upper_bound[0])
+            print('ERROR thetaFixed {0} out of bounds: {1} {2}. exiting'.format(thetaFixed, lower_bound[0], upper_bound[0]))
             exit()
     if nuFixed != None:
         if (nuFixed < lower_bound[1]) or (nuFixed > upper_bound[1]):
-            print 'ERROR nuFixed {0} out of bounds: {1} {2}. exiting'.format(nuFixed, lower_bound[1], upper_bound[1])
+            print('ERROR nuFixed {0} out of bounds: {1} {2}. exiting'.format(nuFixed, lower_bound[1], upper_bound[1]))
             exit()
     if tauFixed != None:
         if (tauFixed < lower_bound[2]) or (tauFixed > upper_bound[2]):
-            print 'ERROR tauFixed {0} out of bounds: {1} {2}. exiting'.format(tauFixed, lower_bound[2], upper_bound[2])
+            print('ERROR tauFixed {0} out of bounds: {1} {2}. exiting'.format(tauFixed, lower_bound[2], upper_bound[2]))
             exit()
     func_ex = dadi.Numerics.make_extrap_log_func(func)
     p0 = dadi.Misc.perturb_params(params, fold=1, upper_bound=upper_bound, lower_bound=lower_bound)
@@ -1515,7 +1539,8 @@ def nestedModelLRT(isCluster, indir, baseA, baseX, allOutfile, minGrid=100):
             LL0 = ll_optA + ll_optX
 
         else:
-            print 'ERROR: invalid model number' + modelNum; exit()
+            print('ERROR: invalid model number' + modelNum)
+            exit()
 
         outstr = 'X {0} {1} {2} {3} {4} '.format(modelNum, ll_optX, poptX[0], poptX[1], thetaX) + '\n'
         allF.write(outstr)
@@ -1610,7 +1635,7 @@ def chooseBestOpt(filePrefix, funcName, numOpts):
             outfileBest = outfile
             modelfileBest = modelfile
     if outfileBest is None:
-        print 'error: no best outfile assigned'
+        print('error: no best outfile assigned')
     return (outfileBest, modelfileBest)
 
 
@@ -1853,7 +1878,7 @@ def lrt1DModel(jsonFile, autoOptNum=None, isCluster=True):
 
         fitDict[modelType] = {'infile': infileA, 'modelfile': modelfile, 'popt': popt, 'll': ll_opt, 'theta': theta, 'phat': phat}
         outstr = 'model {}: pHat = {}, theta = {}'.format(modelType, phat, theta)
-        print outstr
+        print(outstr)
         outstr = 'X {} {} {} {} {}'.format(modelType, ll_opt, theta, phat, repr(popt)) + '\n'
         allF.write(outstr)
         allF.flush()
@@ -1957,7 +1982,7 @@ def lrt2DModel(jsonFile, isCluster=True, autoOptNum=None):   ## TODO NOT DONE
 
         fitDict[modelType] = {'infile': infileA, 'modelfile': modelfile, 'popt': popt, 'll': ll_opt, 'theta': theta, 'phat': phat}
         outstr = 'model {}: pHat = {}, theta = {}'.format(modelType, phat, theta)
-        print outstr
+        print(outstr)
         outstr = 'X {} {} {} {} {}'.format(modelType, ll_opt, theta, phat, repr(popt)) + '\n'
         allF.write(outstr)
         allF.flush()
@@ -2002,18 +2027,18 @@ def fitThreeEpoch(infile, outfile, modelfile, isCluster=True, nuBFixed=None, nuF
     fixed_params=[nuBFixed, nuFFixed, tauBFixed, tauFFixed]
     if nuBFixed != None:
         if (nuBFixed < lower_bound[0]) or (nuBFixed > upper_bound[0]):
-            print 'ERROR nuBFixed {0} out of bounds: {1} {2}. exiting'.format(nuBFixed, lower_bound[0], upper_bound[0])
+            print('ERROR nuBFixed {0} out of bounds: {1} {2}. exiting'.format(nuBFixed, lower_bound[0], upper_bound[0]))
             exit()
         if (nuFFixed < lower_bound[1]) or (nuFFixed > upper_bound[1]):
-            print 'ERROR nuFFixed {0} out of bounds: {1} {2}. exiting'.format(nuFFixed, lower_bound[1], upper_bound[1])
+            print('ERROR nuFFixed {0} out of bounds: {1} {2}. exiting'.format(nuFFixed, lower_bound[1], upper_bound[1]))
             exit()
 
     if tauBFixed != None:
         if (tauBFixed < lower_bound[2]) or (tauBFixed > upper_bound[2]):
-            print 'ERROR tauBFixed {0} out of bounds: {1} {2}. exiting'.format(tauBFixed, lower_bound[2], upper_bound[2])
+            print('ERROR tauBFixed {0} out of bounds: {1} {2}. exiting'.format(tauBFixed, lower_bound[2], upper_bound[2]))
             exit()
         if (tauFFixed < lower_bound[3]) or (tauFFixed > upper_bound[3]):
-            print 'ERROR tauFFixed {0} out of bounds: {1} {2}. exiting'.format(tauFFixed, lower_bound[3], upper_bound[3])
+            print('ERROR tauFFixed {0} out of bounds: {1} {2}. exiting'.format(tauFFixed, lower_bound[3], upper_bound[3]))
             exit()
 
     func_ex = dadi.Numerics.make_extrap_log_func(func)
@@ -2241,7 +2266,8 @@ def nestedThreeEpochModelLRT(isCluster, indir, baseA, baseX, allOutfile, minGrid
             LL0 = ll_optA + ll_optX
 
         else:
-            print 'ERROR: invalid model number' + modelNum; exit()
+            print('ERROR: invalid model number' + modelNum)
+            exit()
 
         outstr = 'X {0} {1} {2} {3} {4} {5} {6} '.format(modelNum, ll_optX, poptX[0], poptX[1], poptX[2], poptX[3], thetaX) + '\n'
         allF.write(outstr)
@@ -2495,28 +2521,33 @@ def edit_trinucl_context(infile, triFile, idx0Tri, idx0Chrom, outfile):
 
 
 #--------- ms simulations ---------#
-def two_epoch_mscore((nu, T)):
+def two_epoch_mscore(nu, T):
     """
     similar to code Ryan uses in the YRI_CEU example. single population, single size change
     scaled such that Nref is Nanc, so the theta estimated from dadi can be used
     """
+
+    # NOTE: python3 update -> changed params (tuple to multiple args). possible dependencies elsewhere in the code that need to be resolved
+    # NOTE: two_epoch_mscore, two_epoch_mscore_Ncurr, growth_mscore all changed in this way
+
     command = "-eN 0 %(nu)f -eN %(T)f 1."
     # There are several factors of 2 necessary to convert units between dadi
     # and ms.
     sub_dict = {'nu':nu, 'T':T/2}
     return command % sub_dict
 
-def two_epoch_mscore_Ncurr((nu, T)):
+def two_epoch_mscore_Ncurr(nu, T):
     """
     my version, scaled to Ncurr. Single eN command
     """
+
     nuMs = 1/nu
     timeMs = T/(2*nu)
     mscore = "-eN {} {}".format(timeMs, nuMs)
     return mscore
 
 
-def growth_mscore((nu, T)):
+def growth_mscore(nu, T):
     """
     scaled to Nanc. is this sufficient or does the starting size need to specificed?
 attempt 1: get theta which is a factor of nu too large
@@ -2539,10 +2570,12 @@ attempt 3: added 1st -eG and "-eN 0 %(nu)f "\
     return command % sub_dict
 
 
-def three_epoch_mscore((nuB,nuF,TB,TF)):
+def three_epoch_mscore(params):
     """
     similar to code Ryan uses in the YRI_CEU example. single population, single size change scaled such that Nref is Nanc, so the theta estimated from dadi can be used
     """
+    (nuB,nuF,TB,TF) = params
+
     command = "-eN 0 %(nuF)f -eN %(TF)f %(nuB)f -eN %(Tsum)f 1."
     # There are several factors of 2 necessary to convert units between dadi
     # and ms.
@@ -2668,12 +2701,12 @@ def read1DParams(funcName, outfile, retParamLine=False, likType='multinom'):
         outF = open(outfile, 'r')
     except IOError:    # TODO is this what I want??
         outstr = 'read1DParams: file with parameters not found and cannot be read from outfile={}'.format(outfile)
-        print outstr
+        print(outstr)
         return (None, None, None, None)
     lines = outF.readlines()
     if len(lines) < 2:
         outstr = 'read1DParams: file with parameters does not have enough lines outfile={}'.format(outfile)
-        print outstr
+        print(outstr)
         if retParamLine:
             return (None, None, None, None, None)
         else:
@@ -2882,7 +2915,7 @@ later encoding: funcName does not need to be hardcoded below because calls getFu
             func, numParams, paramNames = getFuncByName(funcName)
             header = ' '.join(paramNames) + 'll_opt\n'
         except ValueError:
-            print 'could not getFuncByName'
+            print('could not getFuncByName')
             # TODO does this exit?
             
     outstr = header
@@ -3065,7 +3098,7 @@ def evalLikelihood(funcName, params, infile, outBase=None, minGrid=None, pts_l=N
     ns = data.sample_sizes
 
     if pts_l and minGrid:
-        raise valueError('only one of pts_l and minGrid can be specified, not both')
+        raise ValueError('only one of pts_l and minGrid can be specified, not both')
     if pts_l is None:
         if minGrid is None:
             minGrid = max(ns) + 10    # NOTE heuristic
@@ -3215,5 +3248,5 @@ def gridSearch(infile, outfile, upper_bound, lower_bound, num_vals, funcName, is
     fopt = llOptList[maxIdx]
     
     # assign xopt and fopt
-    print 'MLE point on grid and likelihood: {} {}'.format(xopt, fopt)
+    print('MLE point on grid and likelihood: {} {}'.format(xopt, fopt))
     return xopt, fopt

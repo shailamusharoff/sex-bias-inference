@@ -3,7 +3,7 @@ import bisect
 import math
 
 def test():
-    print 'import successful'
+    print('import successful')
 
 
 def readHapmap(infile, hasHeader=True):
@@ -53,7 +53,7 @@ def estPhysPos(posMap, phys, genet, physPos):
         slope = (genetic2 - genetic1) / (phys2 - phys1)
         geneticPos = genetic1 + slope * (physPos - phys1)
         if geneticPos < genet[0] or geneticPos > genet[len(genet)-1]:
-            print 'Warning: predicted genetic position is beyond the bounds of genetic map\n'   # unnecessary, should not happen
+            print('Warning: predicted genetic position is beyond the bounds of genetic map\n')   # unnecessary, should not happen
 
     return(geneticPos)
 

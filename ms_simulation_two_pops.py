@@ -114,7 +114,7 @@ def run_ms_simulation(fnName, numSamples, numReps, mu, L, chromType, times, size
     # run ms simulation
     # hard-coded call: cmd = ms_bottle_epoch_split(numSamples, numReps, mu, L, chromType, times, sizes, propFemales, seeds, msfile, reductionFactors)
     cmd = fnName(numSamples, numReps, mu, L, chromType, times, sizes, propFemales, seeds, msfile, reductionFactors, use_theta, segsites)
-    print cmd
+    print(cmd)
     os.system(cmd)
 
     # read joint fs and get number of segregating sites
@@ -122,7 +122,7 @@ def run_ms_simulation(fnName, numSamples, numReps, mu, L, chromType, times, size
     ms_fs.to_file(fsfile)
     S = int(ms_fs.S())
     if segsites is not None and S != segsites:
-        print 'Error: segsites and S from data differ\n'
+        print('Error: segsites and S from data differ\n')
     
     # write KimTree .dat file for two simulated pops
     ms_data = msfunc.data_from_ms_file(msfile, average=False, write_kimtree=True, outfile=ktfile, segsites=S)   # this works regardless of whether segsites was in explicit argument to ms via -s or theta was provided via -t
