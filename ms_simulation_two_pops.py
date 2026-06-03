@@ -1,10 +1,38 @@
 import os
 import sys
+import shlex
+import subprocess
 import dadi
 from numpy import array
 import ms_functions as msfunc
 import simBottlenecks_functions as simb
 import dadiLrtFunctions as lrt
+
+
+# FIX: shared helper that replaces unsafe `os.system(cmd_with_redirect)` calls.
+# The original code embedded user-supplied paths directly into a shell string
+# and used `>` to redirect stdout -- a shell-injection sink. This helper
+# tokenizes the command itself (no shell needed) and opens the output file in
+# Python, eliminating both the injection surface and the silent-failure surface
+# (os.system's return code was previously never checked).
+def _run_ms(cmd_with_redirect, outfile):
+    cmd_str, _, _ = cmd_with_redirect.partition(' > ')
+    argv = shlex.split(cmd_str)
+    with open(outfile, 'w') as out:
+        result = subprocess.run(argv, stdout=out)
+    if result.returncode != 0:
+        raise RuntimeError(
+            'ms command failed (exit {}): {}'.format(result.returncode, cmd_str))
+
+
+# FIX: bare-OR validator. The four functions below had the bug
+#   if(len(times) !=4 | len(sizes) !=4):
+# where `|` is bitwise OR with higher precedence than `!=`, so the test parsed
+# as `len(times) != (4 | len(sizes)) != 4` and almost never fired correctly.
+# Use this helper everywhere instead of duplicating the (correct) check.
+def _check_lengths(times, sizes, expected, funcname):
+    if len(times) != expected or len(sizes) != expected:
+        sys.exit('{}: times and sizes must be of length {}'.format(funcname, expected))
 
 
 def ms_split_bottle_split(numSamples, numReps, mu, L, chromType, times, sizes, propFemales, seeds, msfile, reductionFactors=None, use_theta=True, segsites=None):
@@ -14,9 +42,12 @@ def ms_split_bottle_split(numSamples, numReps, mu, L, chromType, times, sizes, p
     Population A undergoes instantaneous size change (e.g. bottleleck) then splits into populations 1 and 2.
     s: number of segregating sites to generate
     """
-    if(len(times) !=4 | len(sizes) !=4):
-        sys.exit('times and sizes must be of length 4')    
-    if not use_theta and segsites==None:
+    # FIX: was `if(len(times) !=4 | len(sizes) !=4):` -- bitwise OR with
+    # wrong precedence, so the validation effectively never fired.
+    _check_lengths(times, sizes, 4, 'ms_split_bottle_split')
+    # FIX: `segsites==None` -> `segsites is None` (identity check is correct
+    # for sentinels and avoids surprises if a numpy scalar is ever passed).
+    if not use_theta and segsites is None:
         sys.exit('ms_split_bottle_split: if use_theta is False, must provide number of segregating sites s')
 
     numTotal = 3 * numSamples              # total number of samples
@@ -52,8 +83,8 @@ def ms_bottle_split(numSamples, numReps, mu, L, chromType, times, sizes, propFem
         
     Instantaneous size change followed by a concurrent split and instantaneous size change (three epochs)
     """
-    if(len(times) !=3 | len(sizes) !=3):
-        sys.exit('times and sizes must be of length 3')    
+    # FIX: bitwise-OR validation bug (see _check_lengths above).
+    _check_lengths(times, sizes, 3, 'ms_bottle_split')
 
     numTotal = 2 * numSamples              # total number of samples
     if reductionFactors is not None:
@@ -75,8 +106,8 @@ def ms_bottle_epoch_split(numSamples, numReps, mu, L, chromType, times, sizes, p
 
     Two instantaneous size changes followed by split (four epochs)
     """
-    if(len(times) !=4 | len(sizes) !=4):
-        sys.exit('times and sizes must be of length 4')    
+    # FIX: bitwise-OR validation bug (see _check_lengths above).
+    _check_lengths(times, sizes, 4, 'ms_bottle_epoch_split')
         
     numTotal = 2 * numSamples              # total number of samples
     if reductionFactors is not None:
@@ -95,6 +126,16 @@ def run_ms_simulation(fnName, numSamples, numReps, mu, L, chromType, times, size
     """ 
     fnName: simulation function without quotes, e.g. ms_split_bottle_split . TODO change to func instead of fnName
     """
+    # FIX: validate that fnName is actually callable. Previously passing a
+    # string here produced a confusing "'str' object is not callable" deep
+    # inside the function after partial work had already been done.
+    if not callable(fnName):
+        sys.exit('run_ms_simulation: fnName must be callable, got {!r}'.format(fnName))
+    # FIX: validate seeds length. `ms` requires exactly 3 seeds; passing a
+    # shorter sequence previously raised IndexError inside an f-string after
+    # the shell command was half-built, which was hard to diagnose.
+    if len(seeds) != 3:
+        sys.exit('run_ms_simulation: seeds must have length 3, got {}'.format(len(seeds)))
     if chromType == 'A':
        reductionFn = simb.fA
     elif chromType == 'X':
@@ -115,7 +156,12 @@ def run_ms_simulation(fnName, numSamples, numReps, mu, L, chromType, times, size
     # hard-coded call: cmd = ms_bottle_epoch_split(numSamples, numReps, mu, L, chromType, times, sizes, propFemales, seeds, msfile, reductionFactors)
     cmd = fnName(numSamples, numReps, mu, L, chromType, times, sizes, propFemales, seeds, msfile, reductionFactors, use_theta, segsites)
     print(cmd)
-    os.system(cmd)
+    # FIX: replaced `os.system(cmd)` -- which ran through the shell with
+    # user-controlled paths and silently discarded the exit code -- with the
+    # safer _run_ms helper that uses subprocess, captures the return code,
+    # and raises if ms fails (preventing silent downstream parsing of
+    # incomplete output).
+    _run_ms(cmd, msfile)
 
     # read joint fs and get number of segregating sites
     ms_fs = dadi.Spectrum.from_ms_file(msfile, mask_corners=True, average=False)
@@ -167,6 +213,9 @@ def make_pop3_fs(outdir, numIter):
     
 def simSexBiasedBottleneckTwoPop(numSamples, numReps, mu, L, chromType, times, sizes, propFemales, seeds, simnum, outdir):
     """
+    DEPRECATED: prefer run_ms_simulation with one of the ms_* command-builder
+    functions. Kept for back-compat with existing callers / notebooks only.
+
     Older code that combines ms simulation and writing to files
     Simulates a bottleneck followed by instantaneous growth in the ancestral population, then a two-population split
     Four-epoch model: there is an epoch after end of bottleneck and before split
@@ -179,8 +228,8 @@ def simSexBiasedBottleneckTwoPop(numSamples, numReps, mu, L, chromType, times, s
     
     See function trueParams to convert to dadi parameters
     """
-    if(len(times) !=4 | len(sizes) !=4):
-        sys.exit('times and sizes must be of length 4')    
+    # FIX: bitwise-OR validation bug (see _check_lengths above).
+    _check_lengths(times, sizes, 4, 'simSexBiasedBottleneckTwoPop')
     if chromType == 'A':
        reductionFn = simb.fA
     elif chromType == 'X':
@@ -211,7 +260,9 @@ def simSexBiasedBottleneckTwoPop(numSamples, numReps, mu, L, chromType, times, s
     # cmd example: ms 200 1000 -t theta -I 2 100 100 -ej T1/(4*N0) 1 2 -eN T2/(4*N0) N2/N0 -eN T3/(4*N0) N3/N0
     cmd = "ms {numTotal} {numReps} -t {thetaMs} -I 2 {numSamples} {numSamples} -ej {timesAgoMs[2]} 1 2 -eN {timesAgoMs[1]} {sizesMs[1]} -eN {timesAgoMs[0]} {sizesMs[0]} -seeds {seeds[0]} {seeds[1]} {seeds[2]}".format(**locals())
     cmd += ' > {}'.format(msfile)
-    os.system(cmd)
+    # FIX: replaced unsafe `os.system(cmd)` with _run_ms (subprocess + checked
+    # exit code, no shell). See _run_ms docstring above.
+    _run_ms(cmd, msfile)
 
     # write KimTree .dat file for two simulated pops
     ms_data = msfunc.data_from_ms_file(msfile, write_kimtree=True, outfile=ktfile)
@@ -259,6 +310,10 @@ def fitThreeEpoch(outfileA, infile, likType, funcName, optimizer='optimize_log_f
 
     # chrX optimization parameters and file names
     timescale = 1e-4   # this alone does do anything because I do not use the optimizer functon fit1DModel below. Need to set dadi.Integration.timescale_factor = timescale directly
+    # FIX: snapshot the previous value so we can restore it in `finally` below.
+    # Mutating module-level state on an imported library leaked across calls
+    # and caused order-dependent results in batch runs.
+    _prev_timescale_factor = dadi.Integration.timescale_factor
     dadi.Integration.timescale_factor = timescale
     minGrid = 150      # larger grid?
     outfile = outBase + '_{}_{}.out'.format(likType, funcName)
@@ -270,46 +325,53 @@ def fitThreeEpoch(outfileA, infile, likType, funcName, optimizer='optimize_log_f
     flush_delay = 0.5         # default
 
     # read in chrX data
-    data = dadi.Spectrum.from_file(infile)      
+    data = dadi.Spectrum.from_file(infile)
     ns = data.sample_sizes
 
-    # set params for each fn or eval lik
-    if funcName == 'three_epoch_X0':                 # do not optimize because c = 0.75
-        poptA = array([nuB,nuF,TB,TF,thetaA,0.75])   # all fixed params
-        func = lrt.three_epoch_X0
-        func_ex = dadi.Numerics.make_extrap_log_func(func)
-        model = func_ex(poptA, ns, pts_l)
-        ll_opt = dadi.Inference.ll(model, data)        
-        popt = lrt.getXparams(poptA, funcName)    # write popt, params in terms of chrX. poptA is auto terms followed by c's
-        with open(outfile, 'a') as outF:
-            outstr = lrt.format1DParams(funcName, popt, theta=None, ll_opt=ll_opt)
-            outF.write(outstr)
-        model.to_file(modelfile)
+    # FIX: wrap the optimization in try/finally so that the global
+    # dadi.Integration.timescale_factor we mutated above is restored on every
+    # exit path -- including exceptions -- preventing cross-call leakage.
+    try:
+        # set params for each fn or eval lik
+        if funcName == 'three_epoch_X0':                 # do not optimize because c = 0.75
+            poptA = array([nuB,nuF,TB,TF,thetaA,0.75])   # all fixed params
+            func = lrt.three_epoch_X0
+            func_ex = dadi.Numerics.make_extrap_log_func(func)
+            model = func_ex(poptA, ns, pts_l)
+            ll_opt = dadi.Inference.ll(model, data)
+            popt = lrt.getXparams(poptA, funcName)    # write popt, params in terms of chrX. poptA is auto terms followed by c's
+            with open(outfile, 'a') as outF:
+                outstr = lrt.format1DParams(funcName, popt, theta=None, ll_opt=ll_opt)
+                outF.write(outstr)
+            model.to_file(modelfile)
 
-    elif funcName == 'three_epoch_X1' or funcName == 'three_epoch_X2':   # optimize chrX parameters to fit c's
-        if funcName == 'three_epoch_X1':
-            func = lrt.three_epoch_X1            
-            func_ex = dadi.Numerics.make_extrap_log_func(func)
-            params = array([nuB,nuF,TB,TF,thetaA,0.75])   # starting point for opt
-            upper_bound = [1, 10e2, 1, 1, 1e6, 1.11]   # only last bound matters, is for c
-            lower_bound = [1e-4, 1e-1, 1e-4, 1e-4, 1e2, 0.57]        
-            fixed_params = array([nuB,nuF,TB,TF,thetaA,None])  # c is last and free
-        else:
-            func = lrt.three_epoch_X2
-            func_ex = dadi.Numerics.make_extrap_log_func(func)
-            params = array([nuB,nuF,TB,TF,thetaA,0.75,0.75])   # starting point for opt
-            upper_bound = [1, 10e2, 1, 1, 1e6, 1.11, 1.11]   # only last two bounds matters, is for c
-            lower_bound = [1e-4, 1e-1, 1e-4, 1e-4, 1e2, 0.57, 0.57]        
-            fixed_params = array([nuB,nuF,TB,TF,thetaA,None,None])  # c1 and c2 are last and free
-        p0 = dadi.Misc.perturb_params(params, fold=perturb_fold, lower_bound=lower_bound, upper_bound=upper_bound)
-        poptA = optFn(p0, data, func_ex, pts_l, lower_bound=lower_bound, upper_bound=upper_bound, verbose=len(params), maxiter=maxiter, output_file=logfile, flush_delay=flush_delay, fixed_params=fixed_params, multinom=False)
-        model = func_ex(poptA, ns, pts_l)  # should be same as at end of optimization
-        ll_opt = dadi.Inference.ll(model, data)
-        popt = lrt.getXparams(poptA, funcName)    # write popt, params in terms of chrX. poptA is auto terms followed by c's
-        with open(outfile, 'a') as outF:
-            outstr = lrt.format1DParams(funcName, popt, theta=None, ll_opt=ll_opt)
-            outF.write(outstr)
-        model.to_file(modelfile)
+        elif funcName == 'three_epoch_X1' or funcName == 'three_epoch_X2':   # optimize chrX parameters to fit c's
+            if funcName == 'three_epoch_X1':
+                func = lrt.three_epoch_X1
+                func_ex = dadi.Numerics.make_extrap_log_func(func)
+                params = array([nuB,nuF,TB,TF,thetaA,0.75])   # starting point for opt
+                upper_bound = [1, 10e2, 1, 1, 1e6, 1.11]   # only last bound matters, is for c
+                lower_bound = [1e-4, 1e-1, 1e-4, 1e-4, 1e2, 0.57]
+                fixed_params = array([nuB,nuF,TB,TF,thetaA,None])  # c is last and free
+            else:
+                func = lrt.three_epoch_X2
+                func_ex = dadi.Numerics.make_extrap_log_func(func)
+                params = array([nuB,nuF,TB,TF,thetaA,0.75,0.75])   # starting point for opt
+                upper_bound = [1, 10e2, 1, 1, 1e6, 1.11, 1.11]   # only last two bounds matters, is for c
+                lower_bound = [1e-4, 1e-1, 1e-4, 1e-4, 1e2, 0.57, 0.57]
+                fixed_params = array([nuB,nuF,TB,TF,thetaA,None,None])  # c1 and c2 are last and free
+            p0 = dadi.Misc.perturb_params(params, fold=perturb_fold, lower_bound=lower_bound, upper_bound=upper_bound)
+            poptA = optFn(p0, data, func_ex, pts_l, lower_bound=lower_bound, upper_bound=upper_bound, verbose=len(params), maxiter=maxiter, output_file=logfile, flush_delay=flush_delay, fixed_params=fixed_params, multinom=False)
+            model = func_ex(poptA, ns, pts_l)  # should be same as at end of optimization
+            ll_opt = dadi.Inference.ll(model, data)
+            popt = lrt.getXparams(poptA, funcName)    # write popt, params in terms of chrX. poptA is auto terms followed by c's
+            with open(outfile, 'a') as outF:
+                outstr = lrt.format1DParams(funcName, popt, theta=None, ll_opt=ll_opt)
+                outF.write(outstr)
+            model.to_file(modelfile)
+    finally:
+        # FIX: restore the prior timescale_factor (see snapshot above).
+        dadi.Integration.timescale_factor = _prev_timescale_factor
 
 def run_sb(fsfileA, fsfileX, outfileA, modelfileA):
     """Works. Fixed simulationBottlenecks_functions.py:fitThreeEpoch functions
@@ -325,9 +387,27 @@ def run_sb(fsfileA, fsfileX, outfileA, modelfileA):
     fitThreeEpoch(outfileA, fsfileX, 'pois', 'three_epoch_X1')
     fitThreeEpoch(outfileA, fsfileX, 'pois', 'three_epoch_X2')
 
-def run_kimtree(datfileA, datfileX, treef, outdir, do_run=True):
-    cmd = "/ye/zaitlenlabstore/shailam/sb/src/KimTree_2.0.1/src/kimtree -npilot 20 -lpilot 500 -burnin 10000 -length 20000 -thin 20 -file {0} -Xfile {1} -tree {2} -threads 2 -outputs {3}".format(datfileA, datfileX, treef, outdir)
+def run_kimtree(datfileA, datfileX, treef, outdir, do_run=True, kimtree_bin=None):
+    # FIX: was hardcoded to /ye/zaitlenlabstore/shailam/... which only existed
+    # on the original author's cluster. Now resolves from (in order):
+    #   1. an explicit `kimtree_bin` kwarg,
+    #   2. the KIMTREE_BIN environment variable,
+    #   3. the bare name `kimtree` on PATH.
+    # Also: was using `os.system` with no exit-code check, which silently
+    # masked failures. Now uses subprocess.run with checked return code.
+    if kimtree_bin is None:
+        kimtree_bin = os.environ.get('KIMTREE_BIN', 'kimtree')
+    argv = [
+        kimtree_bin,
+        '-npilot', '20', '-lpilot', '500',
+        '-burnin', '10000', '-length', '20000', '-thin', '20',
+        '-file', datfileA, '-Xfile', datfileX,
+        '-tree', treef, '-threads', '2',
+        '-outputs', outdir,
+    ]
     if do_run:
-        os.system(cmd)
-    return cmd
+        result = subprocess.run(argv)
+        if result.returncode != 0:
+            raise RuntimeError('kimtree failed with exit code {}'.format(result.returncode))
+    return ' '.join(shlex.quote(a) for a in argv)
     

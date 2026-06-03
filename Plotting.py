@@ -84,7 +84,7 @@ def plot_1d_fs(fs, fig_num=None, outfile=None, main=None, dpi=200):
     ax.set_xlim(0, fs.sample_sizes[0])
     if main is not None:            # shaila
         pylab.suptitle(main)
-    if outfile == None:
+    if outfile is None:  # FIX: `== None` -> `is None` (PEP 8; avoids numpy ambiguous-truth issues)
         fig.show()
     else:
         pylab.savefig(outfile, dpi=dpi)
@@ -173,7 +173,7 @@ def plot_1d_comp_Poisson(model, data, fig_num=None, residual='Anscombe',
     ax.set_xlim(0, data.shape[0]-1)
     if main is not None:            # shaila
         pylab.suptitle(main)
-    if outfile == None:
+    if outfile is None:  # FIX: `== None` -> `is None` (PEP 8; avoids numpy ambiguous-truth issues)
         pylab.show()
     else:
         pylab.savefig(outfile, dpi=dpi)
@@ -239,7 +239,7 @@ def plot_single_2d_sfs(sfs, vmin=None, vmax=None, ax=None,
 
     ax.set_xlim(0, sfs.shape[1])
     ax.set_ylim(0, sfs.shape[0])
-    if outfile == None:
+    if outfile is None:  # FIX: `== None` -> `is None` (PEP 8; avoids numpy ambiguous-truth issues)
         pylab.show()
     else:
         pylab.savefig(outfile, dpi=dpi)
@@ -437,7 +437,7 @@ def plot_2d_comp_Poisson(model, data, vmin=None, vmax=None,
     ax.hist(flatresid, bins=20, normed=True)
     ax.set_title('residuals')
     ax.set_yticks([])
-    if outfile == None:
+    if outfile is None:  # FIX: `== None` -> `is None` (PEP 8; avoids numpy ambiguous-truth issues)
         pylab.show()
     else:
         pylab.savefig(outfile, dpi=dpi)
@@ -701,7 +701,7 @@ def plot_3d_spectrum(fs, fignum=None, vmin=None, vmax=None, pop_ids=None, outfil
 
     # XXX: I can't set the axis ticks to be just the endpoints.
 
-    if outfile == None:
+    if outfile is None:  # FIX: `== None` -> `is None` (PEP 8; avoids numpy ambiguous-truth issues)
         pylab.show()
     else:
         pylab.savefig(outfile, dpi=dpi)

@@ -2,6 +2,9 @@ import sys
 import bisect
 import math
 
+# FIX: open() calls below were leaking file handles; switched to `with` blocks
+# so files close deterministically even on exceptions.
+
 def test():
     print('import successful')
 
@@ -16,15 +19,15 @@ def readHapmap(infile, hasHeader=True):
     """
     posMap = []
 
-    inF = open(infile, 'r')
-    if hasHeader:
-        header = inF.readline()
-    for line in inF:
-        line = line.strip()
-        phys, combined, genetic = line.split(' ')
-        posMap.append((int(phys), float(genetic)))  # append tuple to end of list
+    # FIX: use `with` so file closes on exception (was leaking on parse errors).
+    with open(infile, 'r') as inF:
+        if hasHeader:
+            header = inF.readline()
+        for line in inF:
+            line = line.strip()
+            phys, combined, genetic = line.split(' ')
+            posMap.append((int(phys), float(genetic)))  # append tuple to end of list
 
-    inF.close()
     return posMap
 
 # DONE deal with boundary conditions for physPos.
@@ -50,10 +53,20 @@ def estPhysPos(posMap, phys, genet, physPos):
         genetic1 = posInterval[0][1]
         phys2 = posInterval[1][0]
         genetic2 = posInterval[1][1]
+        # FIX: guard against duplicate physical positions (phys2 == phys1) which
+        # would raise ZeroDivisionError. Docstring says the map should be unique,
+        # but we now fail loudly with a useful error rather than crashing on /0.
+        if phys2 == phys1:
+            raise ValueError(
+                'Duplicate physical position {} in genetic map (entries {} and {})'.format(
+                    phys1, i-1, i))
         slope = (genetic2 - genetic1) / (phys2 - phys1)
         geneticPos = genetic1 + slope * (physPos - phys1)
         if geneticPos < genet[0] or geneticPos > genet[len(genet)-1]:
-            print('Warning: predicted genetic position is beyond the bounds of genetic map\n')   # unnecessary, should not happen
+            # FIX: warnings now go to stderr so they don't get swallowed by stdout
+            # capture or interleaved with data output.
+            print('Warning: predicted genetic position is beyond the bounds of genetic map\n',
+                  file=sys.stderr)
 
     return(geneticPos)
 
@@ -63,14 +76,14 @@ def byteify(input):
     http://stackoverflow.com/questions/956867/how-to-get-string-objects-instead-of-unicode-ones-from-json-in-python
     converts unicode to byte strings. for use with json dictionaries
     """
-    if isinstance(input, dict):
-        return {byteify(key):byteify(value) for key,value in input.iteritems()}
-    elif isinstance(input, list):
-        return [byteify(element) for element in input]
-    elif isinstance(input, unicode):
-        return input.encode('utf-8')
-    else:
-        return input
+    # FIX: Python 2 -> Python 3 port. The original purpose of this function
+    # was to convert json.load's `unicode` output to Py2 `str` (bytes) so
+    # callers could index dicts with bytes keys. In Py3, json.load already
+    # returns `str`-keyed dicts and downstream callers (e.g.
+    # readConstantsFromFile -> dataDict['infileX']) index with `str`, so the
+    # right Py3 behavior is to leave the structure unchanged. Encoding str
+    # to bytes here would silently break all those `dataDict['...']` lookups.
+    return input
 
 
 def to_precision(x,p):
@@ -145,9 +158,15 @@ def getMean(logfile, colNum):
     """
     ctr = 0
     currSum = 0
-    for line in open(logfile):
-        ctr += 1
-        currSum += float(line.split('\t')[colNum])
+    # FIX: use `with` so the file handle closes deterministically (was leaking).
+    with open(logfile) as fh:
+        for line in fh:
+            ctr += 1
+            currSum += float(line.split('\t')[colNum])
+    # FIX: guard against an empty input file; previously raised an opaque
+    # ZeroDivisionError. Now we surface the actual problem.
+    if ctr == 0:
+        raise ValueError('getMean: no data lines in {}'.format(logfile))
     meanVal = currSum / ctr
     return meanVal
 

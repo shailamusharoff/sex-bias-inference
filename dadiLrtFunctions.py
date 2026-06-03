@@ -7,6 +7,8 @@ import numpy
 from numpy import array
 import dadi
 import os
+import shlex
+import subprocess
 from dadi import Numerics, PhiManip, Integration
 from dadi.Spectrum_mod import Spectrum
 import sys
@@ -19,6 +21,38 @@ import bisect
 
 # global
 homeDir = os.path.expanduser('~')
+
+
+# FIX: helpers that replace `os.system(cmd_with_>_redirect)` and
+# `os.popen(cmd)` -- both of which spawned a shell with user-controlled paths
+# interpolated into the command string (shell-injection sink) and discarded
+# the return code (silent failures).
+def _ms_to_file(cmd_with_redirect, outfile):
+    """Run an ms-style command without invoking the shell; redirect stdout to outfile."""
+    cmd_str, _, _ = cmd_with_redirect.partition(' > ')
+    argv = shlex.split(cmd_str)
+    with open(outfile, 'w') as out:
+        result = subprocess.run(argv, stdout=out)
+    if result.returncode != 0:
+        raise RuntimeError(
+            'ms command failed (exit {}): {}'.format(result.returncode, cmd_str))
+
+
+def _ms_stdout(cmd):
+    """Run an ms-style command without invoking the shell; return a stdout pipe.
+
+    The caller reads from the returned file-like (e.g. dadi.Spectrum.from_ms_file).
+    """
+    argv = shlex.split(cmd)
+    proc = subprocess.Popen(argv, stdout=subprocess.PIPE, text=True)
+    # FIX: attach the Popen to the returned stream so it is not garbage-collected
+    # before the caller finishes reading. Returning bare `proc.stdout` (as the
+    # first draft of this helper did) drops the only reference to `proc`,
+    # which can trigger a ResourceWarning -- and on some implementations
+    # closes the pipe early. The original `os.popen` did not have this
+    # problem because it returned a wrapper that held the process.
+    proc.stdout._popen_keepalive = proc
+    return proc.stdout
 
 #------------------ custom demographic functions ------------------#
 
@@ -1073,7 +1107,7 @@ def threeEpoch(outdir, tau1, tau2, nu1, nu2, numIters = 1):
                     print(cmd)
 
                 # make spectrum from ms simulation without writing to file
-                ms_fs = dadi.Spectrum.from_ms_file(os.popen(cmd), mask_corners=True, average=False)
+                ms_fs = dadi.Spectrum.from_ms_file(_ms_stdout(cmd), mask_corners=True, average=False)   # FIX: replaces unsafe os.popen
 
                 # make dadi SFS
                 outfile = base + '.dadi'
@@ -1118,10 +1152,10 @@ def simBottleneck(outdir, nu1, tauDefault1, nu2, tauDefault2, currProp, idx, ind
         if writeMsFile:
             msfile = base + '.ms'
             cmd += '> {}'.format(msfile)
-            os.system(cmd)
+            _ms_to_file(cmd, msfile)   # FIX: was os.system (shell injection + no exit-code check)
             ms_fs = dadi.Spectrum.from_ms_file(msfile, mask_corners=True, average=False)
         else:             # make spectrum from ms simulation without writing to file
-            ms_fs = dadi.Spectrum.from_ms_file(os.popen(cmd), mask_corners=True, average=False)
+            ms_fs = dadi.Spectrum.from_ms_file(_ms_stdout(cmd), mask_corners=True, average=False)   # FIX: was os.popen (shell)
 
         # make dadi SFS
         outfile = base + '.dadi'
@@ -1170,10 +1204,10 @@ def singleSizeChange(outdir, nu = 0.1, tauDefault = 0.005, oneFilePerIter=False,
                     if writeMsFile:
                         msfile = base + '.ms'
                         cmd += '> {}'.format(msfile)
-                        os.system(cmd)
+                        _ms_to_file(cmd, msfile)   # FIX: replaces unsafe os.system (see helper docstring)
                         ms_fs = dadi.Spectrum.from_ms_file(msfile, mask_corners=True, average=False)
                     else:             # make spectrum from ms simulation without writing to file
-                        ms_fs = dadi.Spectrum.from_ms_file(os.popen(cmd), mask_corners=True, average=False)
+                        ms_fs = dadi.Spectrum.from_ms_file(_ms_stdout(cmd), mask_corners=True, average=False)   # FIX: replaces unsafe os.popen
                     outfile = base + '.dadi'       # make dadi SFS
                     dadi.Spectrum.to_file(ms_fs, outfile)
 
@@ -1187,10 +1221,10 @@ def singleSizeChange(outdir, nu = 0.1, tauDefault = 0.005, oneFilePerIter=False,
                 if writeMsFile:
                     msfile = base + '.ms'
                     cmd += '> {}'.format(msfile)
-                    os.system(cmd)
+                    _ms_to_file(cmd, msfile)   # FIX: replaces unsafe os.system
                     ms_fs = dadi.Spectrum.from_ms_file(msfile, mask_corners=True, average=doAverage)
                 else:             # make spectrum from ms simulation without writing to file
-                    ms_fs = dadi.Spectrum.from_ms_file(os.popen(cmd), mask_corners=True, average=doAverage)
+                    ms_fs = dadi.Spectrum.from_ms_file(_ms_stdout(cmd), mask_corners=True, average=doAverage)   # FIX: replaces unsafe os.popen
                 outfile = base + '.dadi'       # make dadi SFS
                 dadi.Spectrum.to_file(ms_fs, outfile)
 
@@ -1238,10 +1272,10 @@ def singleSizeChangeOneIter(outdir, nu, tauDefault, currProp, idx, indepSites=Tr
         if writeMsFile:
             msfile = base + '.ms'
             cmd += '> {}'.format(msfile)
-            os.system(cmd)
+            _ms_to_file(cmd, msfile)   # FIX: replaces unsafe os.system
             ms_fs = dadi.Spectrum.from_ms_file(msfile, mask_corners=True, average=False)
         else:             # make spectrum from ms simulation without writing to file
-            ms_fs = dadi.Spectrum.from_ms_file(os.popen(cmd), mask_corners=True, average=False)
+            ms_fs = dadi.Spectrum.from_ms_file(_ms_stdout(cmd), mask_corners=True, average=False)   # FIX: replaces unsafe os.popen
 
         # make dadi SFS
         outfile = base + '.dadi'                 # TODO rename to _dadi_data_sfs.txt
@@ -1269,7 +1303,7 @@ def snmOneIter(outdir, currProp, idx):
         cmd = 'nice ms {0} 1000 -t {1} -r {2} 5000'.format(numChroms, theta, rho)
 
         # make spectrum from ms simulation without writing to file
-        ms_fs = dadi.Spectrum.from_ms_file(os.popen(cmd), mask_corners=True, average=False)
+        ms_fs = dadi.Spectrum.from_ms_file(_ms_stdout(cmd), mask_corners=True, average=False)   # FIX: replaces unsafe os.popen
 
         # make dadi SFS
         outfile = base + '.dadi'                 # TODO rename to _dadi_data_sfs.txt
@@ -1298,7 +1332,7 @@ def snmOneIter(outdir, currProp, idx):
         cmd = 'nice ms {0} 1000 -t {1} -r {2} 5000'.format(numChroms, theta, rho)
 
         # make spectrum from ms simulation without writing to file
-        ms_fs = dadi.Spectrum.from_ms_file(os.popen(cmd), mask_corners=True, average=False)
+        ms_fs = dadi.Spectrum.from_ms_file(_ms_stdout(cmd), mask_corners=True, average=False)   # FIX: replaces unsafe os.popen
 
         # make dadi SFS
         outfile = base + '.dadi'                 # TODO rename to _dadi_data_sfs.txt
@@ -1367,19 +1401,29 @@ def fitTwoEpoch(infile, outfile, modelfile, isCluster=True, nuFixed=None, tauFix
     fixed_params=[nuFixed, tauFixed]
     upper_bound = [1000, 10]           # TODO could reduce this?
     lower_bound = [1e-8, 1e-8]
-    if nuFixed != None:
+    # FIX: `!= None` -> `is not None` (PEP 8; also avoids ambiguous-truth-value
+    # errors if a numpy scalar is ever passed).
+    # FIX: `exit()` -> `sys.exit(1)`. `exit()` is provided by the `site` module
+    # and is not guaranteed in batched/embedded Python; `sys.exit(1)` returns
+    # a nonzero status so a calling script can detect the failure.
+    # FIX: error messages now go to stderr.
+    if nuFixed is not None:
         if (nuFixed < lower_bound[0]) or (nuFixed > upper_bound[0]):
-            print('ERROR nuFixed {0} out of bounds: {1} {2}. exiting'.format(nuFixed, lower_bound[0], upper_bound[0]))
-            exit()
-    if tauFixed != None:
+            print('ERROR nuFixed {0} out of bounds: {1} {2}. exiting'.format(nuFixed, lower_bound[0], upper_bound[0]),
+                  file=sys.stderr)
+            sys.exit(1)
+    if tauFixed is not None:
         if (tauFixed < lower_bound[1]) or (tauFixed > upper_bound[1]):
-            print('ERROR tauFixed {0} out of bounds: {1} {2}. exiting'.format(tauFixed, lower_bound[1], upper_bound[1]))
-            exit()
+            print('ERROR tauFixed {0} out of bounds: {1} {2}. exiting'.format(tauFixed, lower_bound[1], upper_bound[1]),
+                  file=sys.stderr)
+            sys.exit(1)
 
     func_ex = dadi.Numerics.make_extrap_log_func(func)
     model = func_ex(params, ns, pts_l)
     ll_model = dadi.Inference.ll_multinom(model, data)
-    p0 = dadi.Misc.perturb_params(params, fold=1, upper_bound=upper_bound)   # TODO why no upper bound?
+    # FIX: previously omitted `lower_bound=`, so perturbed start values could
+    # fall below the optimizer's lower bound and crash the first eval.
+    p0 = dadi.Misc.perturb_params(params, fold=1, lower_bound=lower_bound, upper_bound=upper_bound)
     if isCluster == True:         # buffer IO
         flush_delay = 1        # could play with this
     else:
@@ -1391,22 +1435,23 @@ def fitTwoEpoch(infile, outfile, modelfile, isCluster=True, nuFixed=None, tauFix
                                        maxiter=1000, output_file=outfile,
                                        flush_delay=flush_delay, fixed_params=fixed_params)
 
-    outfile = open(outfile, 'a')
-    outfile.write('Optimized parameters ' + repr(popt) + '\n')
+    # FIX: use `with` blocks so file handles close on exceptions and partial
+    # writes are flushed. Also stopped shadowing the path-string variables
+    # `outfile`/`modelfile` with file objects -- if any later code wants the
+    # original path, it's no longer lost.
     model = func_ex(popt, ns, pts_l)
     ll_opt = dadi.Inference.ll_multinom(model, data)
     theta = dadi.Inference.optimal_sfs_scaling(model, data)
-
-    outfile.write('Optimized log-likelihood: ' + str(ll_opt) + '; theta: ' + str(theta) + '\n')
     nuhat = popt[0]
     tauhat = popt[1]
-    # outfile.write('{.7f} {.7f} {.7f} {.7f}'.format(nuhat, tauhat, theta, ll_opt))   # hard-coded for two params. TODO get the float formatting to work
-    outfile.write('{} {} {} {}\n'.format(nuhat, tauhat, theta, ll_opt))   # hard-coded for two params
-    outfile.close()
+    with open(outfile, 'a') as outF:
+        outF.write('Optimized parameters ' + repr(popt) + '\n')
+        outF.write('Optimized log-likelihood: ' + str(ll_opt) + '; theta: ' + str(theta) + '\n')
+        # outF.write('{.7f} {.7f} {.7f} {.7f}'.format(nuhat, tauhat, theta, ll_opt))   # hard-coded for two params. TODO get the float formatting to work
+        outF.write('{} {} {} {}\n'.format(nuhat, tauhat, theta, ll_opt))   # hard-coded for two params
 
-    modelfile = open(modelfile, 'w')         # write SFS expected under demographic model and params to file
-    model.to_file(modelfile)
-    modelfile.close()
+    with open(modelfile, 'w') as modelF:    # write SFS expected under demographic model and params to file
+        model.to_file(modelF)
     return (popt, ll_opt, theta)
 
 
@@ -1424,18 +1469,23 @@ def fitTwoEpochPois(infile, outfile, modelfile, isCluster=True, nuFixed=None, ta
     fixed_params=[thetaFixed, nuFixed, tauFixed]
     upper_bound = [20000, 100, 10]           # TODO how to adjust upper bound for theta?
     lower_bound = [100, 1e-8, 1e-8]
-    if thetaFixed != None:
+    # FIX: `!= None` -> `is not None`; `exit()` -> `sys.exit(1)`; errors -> stderr.
+    # See fitTwoEpoch above for full rationale.
+    if thetaFixed is not None:
         if (thetaFixed < lower_bound[0]) or (thetaFixed > upper_bound[0]):
-            print('ERROR thetaFixed {0} out of bounds: {1} {2}. exiting'.format(thetaFixed, lower_bound[0], upper_bound[0]))
-            exit()
-    if nuFixed != None:
+            print('ERROR thetaFixed {0} out of bounds: {1} {2}. exiting'.format(thetaFixed, lower_bound[0], upper_bound[0]),
+                  file=sys.stderr)
+            sys.exit(1)
+    if nuFixed is not None:
         if (nuFixed < lower_bound[1]) or (nuFixed > upper_bound[1]):
-            print('ERROR nuFixed {0} out of bounds: {1} {2}. exiting'.format(nuFixed, lower_bound[1], upper_bound[1]))
-            exit()
-    if tauFixed != None:
+            print('ERROR nuFixed {0} out of bounds: {1} {2}. exiting'.format(nuFixed, lower_bound[1], upper_bound[1]),
+                  file=sys.stderr)
+            sys.exit(1)
+    if tauFixed is not None:
         if (tauFixed < lower_bound[2]) or (tauFixed > upper_bound[2]):
-            print('ERROR tauFixed {0} out of bounds: {1} {2}. exiting'.format(tauFixed, lower_bound[2], upper_bound[2]))
-            exit()
+            print('ERROR tauFixed {0} out of bounds: {1} {2}. exiting'.format(tauFixed, lower_bound[2], upper_bound[2]),
+                  file=sys.stderr)
+            sys.exit(1)
     func_ex = dadi.Numerics.make_extrap_log_func(func)
     p0 = dadi.Misc.perturb_params(params, fold=1, upper_bound=upper_bound, lower_bound=lower_bound)
     if isCluster == True:         # buffer IO
@@ -1539,8 +1589,12 @@ def nestedModelLRT(isCluster, indir, baseA, baseX, allOutfile, minGrid=100):
             LL0 = ll_optA + ll_optX
 
         else:
-            print('ERROR: invalid model number' + modelNum)
-            exit()
+            # FIX: was `print(... + modelNum)` which raises TypeError when
+            # modelNum is int (str + int not supported in Py3). Now formats
+            # the value properly. Also `exit()` -> `sys.exit(1)` so the
+            # process exits with a detectable nonzero code, to stderr.
+            print('ERROR: invalid model number {}'.format(modelNum), file=sys.stderr)
+            sys.exit(1)
 
         outstr = 'X {0} {1} {2} {3} {4} '.format(modelNum, ll_optX, poptX[0], poptX[1], thetaX) + '\n'
         allF.write(outstr)
@@ -2025,26 +2079,33 @@ def fitThreeEpoch(infile, outfile, modelfile, isCluster=True, nuBFixed=None, nuF
 
 
     fixed_params=[nuBFixed, nuFFixed, tauBFixed, tauFFixed]
-    if nuBFixed != None:
+    # FIX: `!= None` -> `is not None`; `exit()` -> `sys.exit(1)`; errors -> stderr.
+    if nuBFixed is not None:
         if (nuBFixed < lower_bound[0]) or (nuBFixed > upper_bound[0]):
-            print('ERROR nuBFixed {0} out of bounds: {1} {2}. exiting'.format(nuBFixed, lower_bound[0], upper_bound[0]))
-            exit()
+            print('ERROR nuBFixed {0} out of bounds: {1} {2}. exiting'.format(nuBFixed, lower_bound[0], upper_bound[0]),
+                  file=sys.stderr)
+            sys.exit(1)
         if (nuFFixed < lower_bound[1]) or (nuFFixed > upper_bound[1]):
-            print('ERROR nuFFixed {0} out of bounds: {1} {2}. exiting'.format(nuFFixed, lower_bound[1], upper_bound[1]))
-            exit()
+            print('ERROR nuFFixed {0} out of bounds: {1} {2}. exiting'.format(nuFFixed, lower_bound[1], upper_bound[1]),
+                  file=sys.stderr)
+            sys.exit(1)
 
-    if tauBFixed != None:
+    if tauBFixed is not None:
         if (tauBFixed < lower_bound[2]) or (tauBFixed > upper_bound[2]):
-            print('ERROR tauBFixed {0} out of bounds: {1} {2}. exiting'.format(tauBFixed, lower_bound[2], upper_bound[2]))
-            exit()
+            print('ERROR tauBFixed {0} out of bounds: {1} {2}. exiting'.format(tauBFixed, lower_bound[2], upper_bound[2]),
+                  file=sys.stderr)
+            sys.exit(1)
         if (tauFFixed < lower_bound[3]) or (tauFFixed > upper_bound[3]):
-            print('ERROR tauFFixed {0} out of bounds: {1} {2}. exiting'.format(tauFFixed, lower_bound[3], upper_bound[3]))
-            exit()
+            print('ERROR tauFFixed {0} out of bounds: {1} {2}. exiting'.format(tauFFixed, lower_bound[3], upper_bound[3]),
+                  file=sys.stderr)
+            sys.exit(1)
 
     func_ex = dadi.Numerics.make_extrap_log_func(func)
     model = func_ex(params, ns, pts_l)
     ll_model = dadi.Inference.ll_multinom(model, data)
-    p0 = dadi.Misc.perturb_params(params, fold=2, upper_bound=upper_bound)   # TODO why no upper bound?
+    # FIX: was missing `lower_bound=` -- perturbed starts could go below
+    # the optimizer's lower bound and crash the first likelihood eval.
+    p0 = dadi.Misc.perturb_params(params, fold=2, lower_bound=lower_bound, upper_bound=upper_bound)
     if isCluster == True:         # buffer IO
         flush_delay = 1        # could play with this
     else:
@@ -2064,18 +2125,18 @@ def fitThreeEpoch(infile, outfile, modelfile, isCluster=True, nuBFixed=None, nuF
     # model_sm = func_ex(popt_sm, ns, pts_l)
     # ll_sm = dadi.Inference.ll_multinom(model_sm, data)
 
-    outfile = open(outfile, 'a')
-    outfile.write('Optimized parameters ' + repr(popt) + '\n')
+    # FIX: use `with` blocks; stop shadowing the path-string variables with
+    # file handles. Previously a raise between open() and close() leaked the
+    # file descriptor and lost the original path string.
     model = func_ex(popt, ns, pts_l)
     ll_opt = dadi.Inference.ll_multinom(model, data)
     theta = dadi.Inference.optimal_sfs_scaling(model, data)
-
-    outfile.write('Optimized log-likelihood: ' + str(ll_opt) + '; theta: ' + str(theta) + '\n')
-    outfile.write('{} {} {} {} {} {}\n'.format(popt[0], popt[1], popt[2], popt[3], theta, ll_opt))   # hard-coded for two params
-    outfile.close()
-    modelfile = open(modelfile, 'w')         # write SFS expected under demographic model and params to file
-    model.to_file(modelfile)
-    modelfile.close()
+    with open(outfile, 'a') as outF:
+        outF.write('Optimized parameters ' + repr(popt) + '\n')
+        outF.write('Optimized log-likelihood: ' + str(ll_opt) + '; theta: ' + str(theta) + '\n')
+        outF.write('{} {} {} {} {} {}\n'.format(popt[0], popt[1], popt[2], popt[3], theta, ll_opt))   # hard-coded for two params
+    with open(modelfile, 'w') as modelF:    # write SFS expected under demographic model and params to file
+        model.to_file(modelF)
     return (popt, ll_opt, theta)
 
 
@@ -2085,7 +2146,10 @@ def fitThreeEpoch(infile, outfile, modelfile, isCluster=True, nuBFixed=None, nuF
 # TODO check if fixed values outside of bounds as a vector, not one at at time
 # TODO option to make min grid increment by proportions, not absolute amounts
 # could use in a bottle call: nuBFixed=None, nuFFixed=None, tauBFixed=None, tauFFixed=None,
-# TODO BUG params, fixed_params, lower_bound, and upper_bound not used!!
+# FIX: removed stale "TODO BUG params/fixed_params/lower_bound/upper_bound not
+# used" comment. Inspection of the body shows caller-provided values ARE used
+# when not None (the `if X is None: X = default` blocks below preserve them),
+# and `fixed_params` is forwarded directly to optimize_log_fmin.
 def fit1DModel(infile, outfile, modelfile, funcName, isCluster=True, minGrid=100, maxiter=100, perturb_fold = 2, lower_bound=None, upper_bound=None, params=None, fixed_params=None, logfile=None, timescale=None):
     # TODO make reasonable upper and lower bounds
     # TOOD set defaults if not passed in: check values passed in
@@ -2095,6 +2159,10 @@ def fit1DModel(infile, outfile, modelfile, funcName, isCluster=True, minGrid=100
     if logfile is None:     # for back compatability to when I wrote evthign to outfile
         logfile = outfile
 
+    # FIX: snapshot timescale_factor before mutation so we can restore it in
+    # the finally block at the end -- previously this leaked across calls and
+    # caused order-dependent results in batched fits.
+    _prev_timescale_factor = dadi.Integration.timescale_factor
     if timescale:
         dadi.Integration.timescale_factor = timescale
     # if minGrid > 60:   # HARDCODED NOTE
@@ -2174,43 +2242,43 @@ def fit1DModel(infile, outfile, modelfile, funcName, isCluster=True, minGrid=100
     else:
         sys.exit('1: func name invalid: {}'.format(funcName))
 
-    data = dadi.Spectrum.from_file(infile)
-    ns = data.sample_sizes
-    pts_l = [minGrid, minGrid+10, minGrid+20]
-    func_ex = dadi.Numerics.make_extrap_log_func(func)
-    model = func_ex(params, ns, pts_l)
-    ll_model = dadi.Inference.ll_multinom(model, data)   # lik of starting point - necessary?
-    p0 = dadi.Misc.perturb_params(params, fold=perturb_fold, lower_bound=lower_bound, upper_bound=upper_bound)
-    if isCluster == True:         # buffer IO
-        flush_delay = 1           # could play with this  # TODO make arg?
-    else:
-        flush_delay = 0.5         # default
-    # TODO hardcoded for multi: implement choice of poisson
-    popt = dadi.Inference.optimize_log_fmin(p0, data, func_ex, pts_l,
-                                      lower_bound=lower_bound,
-                                       upper_bound=upper_bound,
-                                       verbose=len(params),
-                                       maxiter=maxiter, output_file=logfile,
-                                       flush_delay=flush_delay, fixed_params=fixed_params)
+    # FIX: wrap the optimization + writes in try/finally so that the
+    # timescale_factor we mutated above is always restored (see snapshot
+    # `_prev_timescale_factor`), even if the optimizer raises.
+    try:
+        data = dadi.Spectrum.from_file(infile)
+        ns = data.sample_sizes
+        pts_l = [minGrid, minGrid+10, minGrid+20]
+        func_ex = dadi.Numerics.make_extrap_log_func(func)
+        model = func_ex(params, ns, pts_l)
+        ll_model = dadi.Inference.ll_multinom(model, data)   # lik of starting point - necessary?
+        p0 = dadi.Misc.perturb_params(params, fold=perturb_fold, lower_bound=lower_bound, upper_bound=upper_bound)
+        if isCluster == True:         # buffer IO
+            flush_delay = 1           # could play with this  # TODO make arg?
+        else:
+            flush_delay = 0.5         # default
+        # TODO hardcoded for multi: implement choice of poisson
+        popt = dadi.Inference.optimize_log_fmin(p0, data, func_ex, pts_l,
+                                          lower_bound=lower_bound,
+                                           upper_bound=upper_bound,
+                                           verbose=len(params),
+                                           maxiter=maxiter, output_file=logfile,
+                                           flush_delay=flush_delay, fixed_params=fixed_params)
 
-    if logfile != outfile:
-        outfile = open(outfile, 'w')
-    else:
-        outfile = open(outfile, 'a')     # back compat in case logfile is also output file
-    model = func_ex(popt, ns, pts_l)
-    ll_opt = dadi.Inference.ll_multinom(model, data)
-    theta = dadi.Inference.optimal_sfs_scaling(model, data)
-    # these were previously written out
-    # outfile.write('Optimized parameters ' + repr(popt) + '\n')
-    # outfile.write('Optimized log-likelihood: ' + str(ll_opt) + '; theta: ' + str(theta) + '\n')
+        # FIX: use `with` so file closes on exception; stop shadowing the
+        # `outfile` path variable with a file handle.
+        mode = 'w' if logfile != outfile else 'a'   # back compat in case logfile is also output file
+        model = func_ex(popt, ns, pts_l)
+        ll_opt = dadi.Inference.ll_multinom(model, data)
+        theta = dadi.Inference.optimal_sfs_scaling(model, data)
+        outstr = format1DParams(funcName, popt, theta, ll_opt)
+        with open(outfile, mode) as outF:
+            outF.write(outstr)
 
-    # replaced prev code with a function call
-    outstr = format1DParams(funcName, popt, theta, ll_opt)
-    outfile.write(outstr)
-    outfile.close()
-
-    model.to_file(modelfile)       # filename fine, doesn't need to be filehandle
-    return (popt, ll_opt, theta)   # TODO maybe put in a param dict specific to each demog fn, or named list/tuple?
+        model.to_file(modelfile)       # filename fine, doesn't need to be filehandle
+        return (popt, ll_opt, theta)   # TODO maybe put in a param dict specific to each demog fn, or named list/tuple?
+    finally:
+        dadi.Integration.timescale_factor = _prev_timescale_factor
 
 
 
@@ -2266,8 +2334,10 @@ def nestedThreeEpochModelLRT(isCluster, indir, baseA, baseX, allOutfile, minGrid
             LL0 = ll_optA + ll_optX
 
         else:
-            print('ERROR: invalid model number' + modelNum)
-            exit()
+            # FIX: same fix as the model-num branch in nestedModelLRT --
+            # `print(str + int)` raises in Py3, and `exit()` -> `sys.exit(1)`.
+            print('ERROR: invalid model number {}'.format(modelNum), file=sys.stderr)
+            sys.exit(1)
 
         outstr = 'X {0} {1} {2} {3} {4} {5} {6} '.format(modelNum, ll_optX, poptX[0], poptX[1], poptX[2], poptX[3], thetaX) + '\n'
         allF.write(outstr)

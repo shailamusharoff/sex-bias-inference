@@ -1,6 +1,8 @@
 import random
 import os
 import sys
+import shlex
+import subprocess
 import json
 import string
 import _pickle as cPickle
@@ -14,6 +16,20 @@ import dadiLrtFunctions as lrt
 import Plotting as myPlot
 import pythonUtils as pyUtils
 homeDir = os.path.expanduser('~')
+
+
+# FIX: helper replacing the two `os.system(cmd_with_redirect)` calls below.
+# Original code embedded user-controlled paths into a shell string -- a
+# shell-injection sink -- and ignored the exit code. This runs without a
+# shell and surfaces nonzero exit codes.
+def _run_shell_to_file(cmd_with_redirect, outfile):
+    cmd_str, _, _ = cmd_with_redirect.partition(' > ')
+    argv = shlex.split(cmd_str)
+    with open(outfile, 'w') as out:
+        result = subprocess.run(argv, stdout=out)
+    if result.returncode != 0:
+        raise RuntimeError(
+            '{} failed (exit {})'.format(argv[0], result.returncode))
 
 ### globals. remove this to have different values
 mu = 1.5e-8
@@ -524,15 +540,22 @@ def simSexBiasedBottleneck(pklfile):
     
     # run ms command and write fs to file
     cmd = 'ms {0} {1} -t {2} -eN {3} {4} -eN {5} {6} -seeds {7} {8} {9}'.format(inParams['numSamples'], inParams['numReps'], thetaMs, timesAgoMs[1], sizesMs[1], timesAgoMs[0], sizesMs[0], inParams['seeds'][0], inParams['seeds'][1], inParams['seeds'][2])
-    
+
     cmd += ' > {}'.format(inParams['msfile'])
-    os.system(cmd)
+    # FIX: replaces unsafe os.system (see _run_shell_to_file helper).
+    _run_shell_to_file(cmd, inParams['msfile'])
     ms_fs = dadi.Spectrum.from_ms_file(inParams['msfile'], mask_corners=True, average=True)
     ms_fs.to_file(inParams['fsfile'])
-    
+
     # sample_stats, then remove ms file
-    cmd = 'cat {} | {}/popgen/msdir/sample_stats > {}'.format(inParams['msfile'], homeDir, inParams['logfile'])
-    os.system(cmd)
+    # FIX: replaces `cat msfile | sample_stats > logfile` via os.system. We now
+    # open the input file in Python and pipe it to sample_stats via subprocess,
+    # capturing stdout to the log file with no shell involved.
+    sample_stats_bin = '{}/popgen/msdir/sample_stats'.format(homeDir)
+    with open(inParams['msfile'], 'r') as msIn, open(inParams['logfile'], 'w') as logOut:
+        result = subprocess.run([sample_stats_bin], stdin=msIn, stdout=logOut)
+    if result.returncode != 0:
+        raise RuntimeError('sample_stats failed (exit {})'.format(result.returncode))
     
 
 def runFitBottleneck():
@@ -595,6 +618,10 @@ def fitThreeEpoch(outfileA, infile, likType, funcName, optimizer='optimize_log_f
 
     # chrX optimization parameters and file names
     timescale = 1e-4   # this alone does do anything because I do not use the optimizer functon fit1DModel below. Need to set dadi.Integration.timescale_factor = timescale directly
+    # FIX: snapshot the prior value so we can restore it at the bottom of the
+    # function. Previously this mutation leaked across calls and produced
+    # order-dependent fits in batch runs.
+    _prev_timescale_factor = dadi.Integration.timescale_factor
     dadi.Integration.timescale_factor = timescale
     minGrid = 150      # larger grid?
     outfile = outBase + '_{}_{}.out'.format(likType, funcName)
@@ -741,8 +768,13 @@ def fitThreeEpoch(outfileA, infile, likType, funcName, optimizer='optimize_log_f
         model.to_file(modelfile)
         
     else:
-        sys.exit('funcName invalid: {}').format(funcName)
+        sys.exit('funcName invalid: {}'.format(funcName))   # FIX: .format() was outside the sys.exit() call -- exit fired before substitution, so the bad funcName never appeared in the error message
 
+    # FIX: restore the global timescale_factor we mutated above. Not in a
+    # try/finally because wrapping the 150-line elif chain would touch every
+    # line; an unhandled exception in this function already aborts the script
+    # so the leak only matters on the normal return path.
+    dadi.Integration.timescale_factor = _prev_timescale_factor
 
 
 def testFitThreeEpochX0():
@@ -822,7 +854,7 @@ def fitThreeEpochX1(outfileA, infile, likType, funcName, optimizer='optimize_log
         func = lrt.three_epoch_X2
         fixed_params = array([nuB,nuF,TB,TF,thetaA,None,None])  # c1 and c2 are last and free
     else:
-        sys.exit('funcName invalid: {}').format(funcName)
+        sys.exit('funcName invalid: {}'.format(funcName))   # FIX: .format() was outside the sys.exit() call -- exit fired before substitution, so the bad funcName never appeared in the error message
 
     # optimize chrX multiple times
     for optNum in range(numOpts):
@@ -1451,40 +1483,43 @@ def runFIMv2():
     # fitting params
     likType = 'pois'
     timescale = 1e-4
+    # FIX: snapshot + restore so we don't leak this module-level state across calls.
+    _prev_timescale_factor = dadi.Integration.timescale_factor
     dadi.Integration.timescale_factor = timescale
-    minGrid = 150
-    pts_l = [minGrid, minGrid+10, minGrid+20]
+    try:
+        minGrid = 150
+        pts_l = [minGrid, minGrid+10, minGrid+20]
 
-    # chrX fs
-    data = dadi.Spectrum.from_file(infile)
-    ns = data.sample_sizes
-    if funcName == 'three_epoch_X0':     # do not opt
-        func = lrt.three_epoch_X0
-    elif funcName == 'three_epoch_X1':
-        func = lrt.three_epoch_X1            
-    elif funcName == 'three_epoch_X2':
-        func = lrt.three_epoch_X2
-    else:
-        sys.exit('funcName invalid: {}').format(funcName)
-    func_ex = dadi.Numerics.make_extrap_log_func(func)
+        # chrX fs
+        data = dadi.Spectrum.from_file(infile)
+        ns = data.sample_sizes
+        if funcName == 'three_epoch_X0':     # do not opt
+            func = lrt.three_epoch_X0
+        elif funcName == 'three_epoch_X1':
+            func = lrt.three_epoch_X1
+        elif funcName == 'three_epoch_X2':
+            func = lrt.three_epoch_X2
+        else:
+            sys.exit('funcName invalid: {}'.format(funcName))
+        func_ex = dadi.Numerics.make_extrap_log_func(func)
 
-    poptX, ll_optX, thetaX, paramDictX, paramLineX = lrt.read1DParams(funcName, outfileX, retParamLine=True, likType=likType)   
-    AfuncName = 'three_epoch'
-    poptA, ll_optA, thetaA, paramDictA = lrt.read1DParams(AfuncName, outfileA)
-    
-    cX = float(paramLineX.split(' ')[5])    # just one for X1
-    poptOrig = poptA + [thetaA, float(cX)]
+        poptX, ll_optX, thetaX, paramDictX, paramLineX = lrt.read1DParams(funcName, outfileX, retParamLine=True, likType=likType)
+        AfuncName = 'three_epoch'
+        poptA, ll_optA, thetaA, paramDictA = lrt.read1DParams(AfuncName, outfileA)
 
-    # check - same as from file!! bc matched timescale
-    model_test = func_ex(poptOrig, ns, pts_l)
-    ll_test = dadi.Inference.ll(model_test, data)
+        cX = float(paramLineX.split(' ')[5])    # just one for X1
+        poptOrig = poptA + [thetaA, float(cX)]
 
-    # estimate FIM
-    uncerts_fim = dadi.Godambe.FIM_uncert(func_ex, pts_l, poptOrig, data, multinom=False)
+        # check - same as from file!! bc matched timescale
+        model_test = func_ex(poptOrig, ns, pts_l)
+        ll_test = dadi.Inference.ll(model_test, data)
 
-    
-    
-        
+        # estimate FIM
+        uncerts_fim = dadi.Godambe.FIM_uncert(func_ex, pts_l, poptOrig, data, multinom=False)
+    finally:
+        dadi.Integration.timescale_factor = _prev_timescale_factor
+
+
 def runFIM(infile, outfileA, funcName):
     """
     TODO something odd here with opt and getting same log likelihood -- timescale was different.
@@ -1506,6 +1541,9 @@ def runFIM(infile, outfileA, funcName):
     likType = 'pois'
     # timescale = 1e-4
     timescale = 1e-3  # default
+    # FIX: snapshot + restore so this mutation doesn't leak to other functions
+    # in the same process. (See note at top of file / fitThreeEpoch.)
+    _prev_timescale_factor = dadi.Integration.timescale_factor
     dadi.Integration.timescale_factor = timescale
     minGrid = 150
     pts_l = [minGrid, minGrid+10, minGrid+20]
@@ -1518,7 +1556,7 @@ def runFIM(infile, outfileA, funcName):
     elif funcName == 'three_epoch_X2':
         func = lrt.three_epoch_X2
     else:
-        sys.exit('funcName invalid: {}').format(funcName)
+        sys.exit('funcName invalid: {}'.format(funcName))   # FIX: .format() was outside the sys.exit() call -- exit fired before substitution, so the bad funcName never appeared in the error message
     func_ex = dadi.Numerics.make_extrap_log_func(func)
 
     # chrX fs
@@ -1587,7 +1625,10 @@ def runFIM(infile, outfileA, funcName):
 
     uncerts_fim = dadi.Godambe.FIM_uncert(func_ex, pts_l, poptOrig, data, multinom=False)
 
-    uncerts_fim = dadi.Godambe.FIM_uncert(func_ex, pts_l, poptA, data, multinom=False)    
-    
+    uncerts_fim = dadi.Godambe.FIM_uncert(func_ex, pts_l, poptA, data, multinom=False)
+
+    # FIX: restore the timescale_factor we mutated at the top of runFIM.
+    dadi.Integration.timescale_factor = _prev_timescale_factor
+
     # TODO get FIM estimates: use three_epoch. multi vesrsion - get same CI? also a pois version
     # lrt def three_epoch_fixed_theta(params, ns, pts):
