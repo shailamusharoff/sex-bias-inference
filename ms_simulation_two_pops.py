@@ -77,14 +77,18 @@ def ms_split_bottle_split(numSamples, numReps, mu, L, chromType, times, sizes, p
     return cmd        
    
 
-def ms_bottle_split(numSamples, numReps, mu, L, chromType, times, sizes, propFemales, seeds, msfile, reductionFactors=None):
+def ms_bottle_split(numSamples, numReps, mu, L, chromType, times, sizes, propFemales, seeds, msfile, reductionFactors=None, use_theta=True, segsites=None):
     """
     Returns ms command as a string
-        
+
     Instantaneous size change followed by a concurrent split and instantaneous size change (three epochs)
     """
     # FIX: bitwise-OR validation bug (see _check_lengths above).
     _check_lengths(times, sizes, 3, 'ms_bottle_split')
+    # FIX: added use_theta/segsites params so the signature matches what
+    # run_ms_simulation passes (it was hard-coded to forward 13 args).
+    if not use_theta and segsites is None:
+        sys.exit('ms_bottle_split: if use_theta is False, must provide segsites')
 
     numTotal = 2 * numSamples              # total number of samples
     if reductionFactors is not None:
@@ -97,10 +101,13 @@ def ms_bottle_split(numSamples, numReps, mu, L, chromType, times, sizes, propFem
 
     # ms 200 1000 -t theta -I 2 100 100 -ej T1/(4*N0) 1 2 -eN T1/(4*N0) N2/N0 -eN T2/(4*N0) N1/N0
     # note: T1 = timesAgoMs[1]; T2 = timesAgoMs[0]
-    cmd = "ms {numTotal} {numReps} -t {thetaMs} -I 2 {numSamples} {numSamples} -ej {timesAgoMs[1]} 1 2 -eN {timesAgoMs[1]} {sizesMs[1]} -eN {timesAgoMs[0]} {sizesMs[0]} -seeds {seeds[0]} {seeds[1]} {seeds[2]} > {msfile}".format(**locals())  # TODO untested
+    if use_theta:
+        cmd = "ms {numTotal} {numReps} -t {thetaMs} -I 2 {numSamples} {numSamples} -ej {timesAgoMs[1]} 1 2 -eN {timesAgoMs[1]} {sizesMs[1]} -eN {timesAgoMs[0]} {sizesMs[0]} -seeds {seeds[0]} {seeds[1]} {seeds[2]} > {msfile}".format(**locals())  # TODO untested
+    else:
+        cmd = "ms {numTotal} {numReps} -s {segsites} -I 2 {numSamples} {numSamples} -ej {timesAgoMs[1]} 1 2 -eN {timesAgoMs[1]} {sizesMs[1]} -eN {timesAgoMs[0]} {sizesMs[0]} -seeds {seeds[0]} {seeds[1]} {seeds[2]} > {msfile}".format(**locals())  # TODO untested
     return cmd        
         
-def ms_bottle_epoch_split(numSamples, numReps, mu, L, chromType, times, sizes, propFemales, seeds, msfile, reductionFactors=None):
+def ms_bottle_epoch_split(numSamples, numReps, mu, L, chromType, times, sizes, propFemales, seeds, msfile, reductionFactors=None, use_theta=True, segsites=None):
     """
     Returns ms command as a string
 
@@ -108,7 +115,12 @@ def ms_bottle_epoch_split(numSamples, numReps, mu, L, chromType, times, sizes, p
     """
     # FIX: bitwise-OR validation bug (see _check_lengths above).
     _check_lengths(times, sizes, 4, 'ms_bottle_epoch_split')
-        
+    # FIX: added use_theta/segsites params so the signature matches what
+    # run_ms_simulation now passes -- previously this raised TypeError
+    # "takes from 10 to 11 positional arguments but 13 were given".
+    if not use_theta and segsites is None:
+        sys.exit('ms_bottle_epoch_split: if use_theta is False, must provide segsites')
+
     numTotal = 2 * numSamples              # total number of samples
     if reductionFactors is not None:
         sizes = sizes * reductionFactors   # effective sizes that account for propFemales
@@ -117,9 +129,12 @@ def ms_bottle_epoch_split(numSamples, numReps, mu, L, chromType, times, sizes, p
     timesAgoMs = [ x / (4. * N0) for x in timesAgo]
     sizesMs = [ x / (1. * N0) for x in sizes ]
     thetaMs = 4 * N0 * mu * L
-     
+
     # ms 200 1000 -t theta -I 2 100 100 -ej T1/(4*N0) 1 2 -eN T2/(4*N0) N2/N0 -eN T3/(4*N0) N3/N0
-    cmd = "ms {numTotal} {numReps} -t {thetaMs} -I 2 {numSamples} {numSamples} -ej {timesAgoMs[2]} 1 2 -eN {timesAgoMs[1]} {sizesMs[1]} -eN {timesAgoMs[0]} {sizesMs[0]} -seeds {seeds[0]} {seeds[1]} {seeds[2]} > {msfile}".format(**locals())
+    if use_theta:
+        cmd = "ms {numTotal} {numReps} -t {thetaMs} -I 2 {numSamples} {numSamples} -ej {timesAgoMs[2]} 1 2 -eN {timesAgoMs[1]} {sizesMs[1]} -eN {timesAgoMs[0]} {sizesMs[0]} -seeds {seeds[0]} {seeds[1]} {seeds[2]} > {msfile}".format(**locals())
+    else:
+        cmd = "ms {numTotal} {numReps} -s {segsites} -I 2 {numSamples} {numSamples} -ej {timesAgoMs[2]} 1 2 -eN {timesAgoMs[1]} {sizesMs[1]} -eN {timesAgoMs[0]} {sizesMs[0]} -seeds {seeds[0]} {seeds[1]} {seeds[2]} > {msfile}".format(**locals())
     return cmd    
 
 def run_ms_simulation(fnName, numSamples, numReps, mu, L, chromType, times, sizes, propFemales, seeds, simnum, outdir, use_theta=True, segsites=None):
