@@ -1450,8 +1450,11 @@ def fitTwoEpoch(infile, outfile, modelfile, isCluster=True, nuFixed=None, tauFix
         # outF.write('{.7f} {.7f} {.7f} {.7f}'.format(nuhat, tauhat, theta, ll_opt))   # hard-coded for two params. TODO get the float formatting to work
         outF.write('{} {} {} {}\n'.format(nuhat, tauhat, theta, ll_opt))   # hard-coded for two params
 
-    with open(modelfile, 'w') as modelF:    # write SFS expected under demographic model and params to file
-        model.to_file(modelF)
+    # FIX: modern dadi's Spectrum.to_file() takes a filename string and opens
+    # the file itself (it calls fname.endswith('.gz')). The old API accepted
+    # a file handle; passing one now raises AttributeError. Drop the
+    # `with open(...)` wrapper and pass the filename directly.
+    model.to_file(modelfile)
     return (popt, ll_opt, theta)
 
 
@@ -2135,8 +2138,9 @@ def fitThreeEpoch(infile, outfile, modelfile, isCluster=True, nuBFixed=None, nuF
         outF.write('Optimized parameters ' + repr(popt) + '\n')
         outF.write('Optimized log-likelihood: ' + str(ll_opt) + '; theta: ' + str(theta) + '\n')
         outF.write('{} {} {} {} {} {}\n'.format(popt[0], popt[1], popt[2], popt[3], theta, ll_opt))   # hard-coded for two params
-    with open(modelfile, 'w') as modelF:    # write SFS expected under demographic model and params to file
-        model.to_file(modelF)
+    # FIX: see same change above -- modern dadi's Spectrum.to_file() opens
+    # the file itself, so pass the filename instead of a handle.
+    model.to_file(modelfile)
     return (popt, ll_opt, theta)
 
 
