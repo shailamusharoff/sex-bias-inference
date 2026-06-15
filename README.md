@@ -5,6 +5,8 @@ Musharoff S, Shringarpure S, Bustmante CD, Ramachandran S (2019) The inference o
 
 Please contact the first author for software: sam442@cornell.edu
 
+All code in the vendor source directory was written by other people. 
+
 ## Setup instructions w/ UV 
 - Clone the repo with `git clone git@github.com:shailamusharoff/sb-private.git`
 - `cd sb-private`
@@ -12,4 +14,6 @@ Please contact the first author for software: sam442@cornell.edu
 - `uv venv` to create a virtual environment 
 - `source .venv/bin/activate` to activate the venv
 - `uv pip install -r requirements.txt` to install the requirements
+- Build ms with ` cd vendor/msdir && ./clms && cp ms ../../.venv/bin/ms && cd ../..` and check the install with `which ms` (should point to ~/wherever-you-have-this-repo/.venv/bin/ms if install worked)
 - run `python examples/run_bottleneck_example.py` to run an example bottleneck with a population ratio of 80/20 males/females. 
+
