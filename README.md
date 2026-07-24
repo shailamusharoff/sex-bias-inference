@@ -5,7 +5,7 @@ Musharoff S, Shringarpure S, Bustmante CD, Ramachandran S (2019) The inference o
 
 Please contact the first author with questions: sam442@cornell.edu
 
-Note: the "vendor" source directory contains code written by others, specifically the program ms, which is used to simulate data in the example.
+Note: the "vendor" source directory contains code written by others, specifically the Hudson's program `ms`, which is used to simulate data in the example.
 
 ## Setup instructions with virtual environment 
 - Clone the repo with `git clone git@github.com:shailamusharoff/sb-private.git`
@@ -14,8 +14,8 @@ Note: the "vendor" source directory contains code written by others, specificall
 - `uv venv` to create a virtual environment 
 - `source .venv/bin/activate` to activate the venv
 - `uv pip install -r requirements.txt` to install the requirements
-- Build ms with ` cd vendor/msdir && ./clms && cp ms ../../.venv/bin/ms && cd ../..` and check the install with `which ms` (should point to the location of this repo which contains .venv/bin/ms if install worked)
-- run `python examples/run_bottleneck_example.py` to run an example bottleneck with a population ratio of 80/20 males/females. 
+- Build ms with ` cd vendor/msdir && ./clms && cp ms ../../.venv/bin/ms && cd ../..` and check the install with `which ms` (should point to the location of this repo which contains .venv/bin/ms if the install worked)
+- run `python examples/run_bottleneck_example.py` to run an example bottleneck with a population ratio of 80/20 males/females (so, a proprtion female of 0.20). 
 
 ## Brief Documentation 
 This section is to give you an overview of the structure of this repo. More detailed documentation can be found in comments around specified functions and by looking in `./examples`, and the paper cited above contains a full description of the method.
@@ -36,4 +36,4 @@ All take in the same arguments and return the corresponding ms command string. T
 - `fitThreeEpoch(...)`: fits one constrained X model, and `run_sb()` calls it three times, but you can call it once if you want a single model 
 - `lrt.fitThreeEpoch(...)`: Standalone 3 epoch autosomal fit. 
 - `lrt.read1DParams`: parse original params, LL, and theta from a fit's `.out` file. Used to compute LRT programatically. 
-- `plotSFS(...)`: Plot A vs X spectra from `.fs` files. 
+- `plotSFS(...)`: Plot autosomal (A) vs X chromosomal (X) site frequency spectra from `.fs` files. 

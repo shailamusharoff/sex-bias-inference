@@ -1,11 +1,11 @@
 """
 End-to-end example: simulate a sex-biased bottleneck, fit the autosomal
-and X-chromosome demographic models, and run the sex-bias LRT.
+and X-chromosomal demographic models, and run the sex-bias LRT.
 
 Scenario
 --------
-A four-epoch model -- ancestral -> bottleneck -> recovery -> split --
-where only the bottleneck epoch is male-biased (20% of breeders female).
+A four-epoch model (ancestral -> bottleneck -> recovery -> split)
+where only the bottleneck epoch is male-biased (proportation of females is 0.20).
 Because the X chromosome carries proportionally more female-inherited
 copies, its effective size shrinks more than the autosomes during a
 male-biased epoch. The pipeline should detect this as c < 0.75 in the
@@ -14,14 +14,14 @@ X1 model (constant sex-bias) relative to the X0 null (c = 0.75 fixed).
 Pipeline
 --------
 1. `ms_simulation_two_pops.run_ms_simulation` runs Hudson's `ms` for
-   both A and X under the chosen demography, writing per-population
-   dadi-format SFS files.
+   both autosomes and chromosome X for the specified demographic model,
+   writing per-population dadi-format SFS files.
 2. `ms_simulation_two_pops.run_sb` fits the autosomal three-epoch model,
-   then fits three nested X-chromosome models (X0, X1, X2) constrained
-   by the autosomal parameters.
+   then fits three nested X-chromosomal models (X0, X1, X2), which are
+   constrained by the autosomal parameters.
 3. The likelihood ratios LL_X1 - LL_X0 (constant sex bias) and
    LL_X2 - LL_X1 (epoch-varying sex bias) are the test statistics,
-   each compared to chi-squared with 1 df.
+   each of which are compared to chi-squared with 1 degree of freedom.
 
 Requirements
 ------------
@@ -51,10 +51,11 @@ import ms_simulation_two_pops as msim
 # --- demography ---------------------------------------------------------
 # Times are durations of each epoch in generations, ordered past -> present.
 # Sizes are the diploid Ne during the matching epoch.
-# propFemales is the fraction of breeders that are female in each epoch.
+# propFemales is the proportion of females in each epoch.
 #
-# Four epochs: ancient -> bottleneck -> recovery -> post-split.
-# Bottleneck epoch is male-biased (propFemales = 0.2); all others equal.
+# Four epochs: ancient -> bottleneck -> recovery -> post-split
+# Bottleneck epoch is male-biased (propFemales = 0.2);
+# all others have no sex bias (propFemales = 0.5).
 TIMES        = [10000, 2000,  5000, 5000]
 SIZES        = [10000, 1000, 10000, 10000]
 PROP_FEMALES = [0.5,    0.2,   0.5,   0.5]
@@ -74,7 +75,7 @@ os.makedirs(OUTDIR, exist_ok=True)
 os.makedirs(os.path.join(OUTDIR, 'lrt_test'), exist_ok=True)
 
 
-# --- step 1: simulate joint + per-population SFS for A and X -----------
+# --- Step 1: simulate joint and per-population SFS for autosomes and chrX -----------
 for chromType in ('A', 'X'):
     msim.run_ms_simulation(
         fnName=msim.ms_bottle_epoch_split,
@@ -105,7 +106,7 @@ print()
 print('Autosomal fit (three_epoch):')
 print('  {}'.format(outfileA))
 print()
-print('X-chromosome fits (last line of each = optimized params + log-likelihood):')
+print('X-chromosomal fits (last line of each = optimized params + log-likelihood):')
 for model in ('X0', 'X1', 'X2'):
     path = os.path.join(
         OUTDIR, 'lrt_test',
@@ -113,7 +114,7 @@ for model in ('X0', 'X1', 'X2'):
     )
     print('  {}: {}'.format(model, path))
 print()
-print('LRT statistics (compute by hand from the .out files):')
+print('LRT statistics (compute from the .out files):')
 print('  constant sex bias:       2 * (LL_X1 - LL_X0)  vs  chi-sq(1)')
 print('  epoch-varying sex bias:  2 * (LL_X2 - LL_X1)  vs  chi-sq(1)')
 print()
