@@ -5,7 +5,7 @@ Musharoff S, Shringarpure S, Bustmante CD, Ramachandran S (2019) The inference o
 
 Please contact the first author with questions: sam442@cornell.edu
 
-Note: the "vendor" source directory contains code written by others, specifically the Hudson's program `ms`, which is used to simulate data in the example.
+Note: the "vendor" source directory contains code written by others, specifically Hudson's program `ms`, which is used to simulate data in the example.
 
 ## Setup instructions with virtual environment 
 - Clone the repo with `git clone git@github.com:shailamusharoff/sb-private.git`

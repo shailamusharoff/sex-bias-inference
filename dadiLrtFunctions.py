@@ -440,7 +440,6 @@ def OOAAsn(params, n1, pts):
 
 
 
-# TODO finish and test
 def gravel_eur_single_pop(params, ns, pts):
     """
     A one-population model used to model European out-of-Africa demography.
@@ -456,19 +455,13 @@ def gravel_eur_single_pop(params, ns, pts):
 
     #integrate for time TAf (with constant population)
     phi = Integration.one_pop(phi, xx, TAf, nu=nuAf0)
-
-    # TODO missing bottleneck integration here with nuB, TB
     
     initialgrowth=TEuAs+TB-timegrowthEu
     nuEu_func = lambda t: nuEu0*(nuEu1/nuEu0)**(min(t,initialgrowth)/initialgrowth)*(nuEu2/nuEu1)**(max(0,t-initialgrowth)/(TB+TEuAs-initialgrowth))
 
     # changed to one-pop integration
     #phi = Integration.two_pops(phi, xx, TB+TEuAs, nu1=nuAf_func, nu2=nuEu_func, m12=mAfB, m21=mAfB)
-    # TODO what is T here?? If same as before, TB+TEuAs
     phi = Integration.one_pop(phi, xx, TB+TEuAs, nu=nuEu_func)
-
-
-    # TODO did I leave out last growth event? probably fine because was super exponential... then need to adjust growth rate estiamtes
     
     fs = Spectrum.from_phi(phi, ns, (xx,))
     return fs
@@ -487,8 +480,7 @@ def gravel_eur_single_pop_LRT(params, ns, pts, LA, LX, modelType):
     """
 
     (nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu) = params
-    fitDict = {'A': {}, 'X2': {}, 'X1': {}, 'X0': {}}   # TODO put in wrapper function?
-    # TODO update constants below
+    fitDict = {'A': {}, 'X2': {}, 'X1': {}, 'X0': {}} 
 
     # constants and file names
     LA = 3509211.      # autosomal capture region that passed mask filter: chr1-22: 3509211
@@ -552,7 +544,6 @@ def gravel_eur_single_pop_LRT(params, ns, pts, LA, LX, modelType):
 
     ### chrX: model 1 ###
     # X1: p free, p constant
-    # TODO update to fit tau's: want them to be constrained to be some multiple. could to a grid search as in function gridSearchTwoEpochC() in this file
     if modelType == 'X1':
         chrom = 'X'
         params = array([nuAf0, nuB, nuEu0, nuEu1, 4./3*TAf, 4./3*TEuAs, 4./3*TB, nuEu2, 4./3*timegrowthEu])
@@ -574,7 +565,7 @@ def gravel_eur_single_pop_LRT(params, ns, pts, LA, LX, modelType):
 
     return fitDict
 
-#    # TODO write dict to file: picke, and human readable
+#    # write dict to file: picke, and human readable
 #    pklFile = indir + 'CEU_bottlegrowth_phat.pkl'
 #    pklF = open(pklFile, 'wb')
 #    pickle.dump(fitDict, pklF)
@@ -805,7 +796,7 @@ def three_epoch_X(params, ns, multinom, modelType, pts):
     """
 
     # parameter parsing and constraints
-    if modelType == 'X0':   # TODO don't need c here
+    if modelType == 'X0':
         nuB,nuF,TB_auto,TF_auto,theta_auto = params
         c = 3./4
         TB = 1./c * TB_auto
@@ -850,7 +841,7 @@ def three_epoch_convert_params(params, modelType, retConstraints=False):
     """
     # parameter parsing and constraints
     
-    if modelType == 'X0':   # TODO don't need c here
+    if modelType == 'X0':
         nuB,nuF,TB_auto,TF_auto,theta_auto = params
         c = 3./4
         TB = 1./c * TB_auto
@@ -934,7 +925,6 @@ def three_epoch_X1_P_v2(params, ns, pts):
     
 def growth_X(params, ns, multinom, modelType, pts):
     """
-    TODO not tested
     Exponential growth beginning some time ago.
 
     params = (nu,T)
@@ -961,7 +951,7 @@ def growth_X(params, ns, multinom, modelType, pts):
     elif modelType == 'X2':
         nu_auto,T_auto,theta_auto,c1,c2 = params
         nu = c2 / c1 * nu_auto
-        T = 1./c2 * T_auto  # TODO CHeck c2?
+        T = 1./c2 * T_auto
         theta = c1 * theta_auto
     else:
         sys.exit('invalid modelType')
@@ -1016,7 +1006,7 @@ def threeEpochGrowth_X(params, ns, multinom, modelType, pts):
     pts: Number of grid points to use in integration.
     """
     # parameter parsing and constraints
-    if modelType == 'X0':   # TODO don't need c here
+    if modelType == 'X0':
         nuB,nuF,nuC,TB,TF,TC,theta = params        
         c = 3./4
         TB *= 1./c
@@ -1094,7 +1084,7 @@ def threeEpoch(outdir, tau1, tau2, nu1, nu2, numIters = 1):
                 numChroms = 30
                 f =  (9 * currProp * (1-currProp)) / ((2-currProp) * 2)
                 r = 2/3.               # 2/3 of the X's underwent recombination: those from maternal transmission
-                rho = f * r * rhoDefault      # rho = 4 Ne^X * 2/3 * per-site recomb rate. TODO Check that the python matches this formula
+                rho = f * r * rhoDefault      # rho = 4 Ne^X * 2/3 * per-site recomb rate.
             tau = tauDefault / f
             theta = f * thetaDefault
 
@@ -1169,7 +1159,6 @@ def simBottleneck(outdir, nu1, tauDefault1, nu2, tauDefault2, currProp, idx, ind
 ## original verison assumes LX = LA
 # LXtoLA = LX/LA
 # thetaDefault is the autosomal theta for p = 0.5; tauDefault is also for auto p = 0.5
-# TODO rewrite theta conversions more sensibly
 # oneFilePerIter: if true, writes one dadi sfs file per ms iteration. numIters gets set to 1
 # doAverage false -> sums over ms iterations to make fs
 def singleSizeChange(outdir, nu = 0.1, tauDefault = 0.005, oneFilePerIter=False, numIters = 1, doAverage=True, indepSites=True, numChromsDefault=40, thetaDefault = 50, LXtoLA = 1, rhoDefault = 50, writeMsFile=False):
@@ -1244,7 +1233,6 @@ def singleSizeChange(outdir, nu = 0.1, tauDefault = 0.005, oneFilePerIter=False,
 # tauDefault = 0.005         # for Nref of 500: 100 gens ago
 # original verison assumes LX = LA; here LXtoLA = LX/LA
 # thetaDefault is the autosomal theta for p = 0.5; tauDefault is also for auto p = 0.5
-# TODO rewrite theta conversions more sensibly
 def singleSizeChangeOneIter(outdir, nu, tauDefault, currProp, idx, indepSites=True, numChromsDefault=40, thetaDefault = 50, rhoDefault = 50, writeMsFile=False):
     chromList = ['A', 'X']
     for chrom in chromList:
@@ -1278,7 +1266,7 @@ def singleSizeChangeOneIter(outdir, nu, tauDefault, currProp, idx, indepSites=Tr
             ms_fs = dadi.Spectrum.from_ms_file(_ms_stdout(cmd), mask_corners=True, average=False)   # FIX: replaces unsafe os.popen
 
         # make dadi SFS
-        outfile = base + '.dadi'                 # TODO rename to _dadi_data_sfs.txt
+        outfile = base + '.dadi'
         dadi.Spectrum.to_file(ms_fs, outfile)
 
 # standard neutral model. Can make SFS immediately after. Does not store ms output file.
@@ -1306,7 +1294,7 @@ def snmOneIter(outdir, currProp, idx):
         ms_fs = dadi.Spectrum.from_ms_file(_ms_stdout(cmd), mask_corners=True, average=False)   # FIX: replaces unsafe os.popen
 
         # make dadi SFS
-        outfile = base + '.dadi'                 # TODO rename to _dadi_data_sfs.txt
+        outfile = base + '.dadi'
         dadi.Spectrum.to_file(ms_fs, outfile)
 
 
@@ -1335,7 +1323,7 @@ def snmOneIter(outdir, currProp, idx):
         ms_fs = dadi.Spectrum.from_ms_file(_ms_stdout(cmd), mask_corners=True, average=False)   # FIX: replaces unsafe os.popen
 
         # make dadi SFS
-        outfile = base + '.dadi'                 # TODO rename to _dadi_data_sfs.txt
+        outfile = base + '.dadi'
         dadi.Spectrum.to_file(ms_fs, outfile)
 
 # standard neutral model. Can make SFS immediately after. Does not store ms output file.
@@ -1368,7 +1356,7 @@ def snmPoisOneIter(outdir, currProp, idx):
         #    S_i = numpy.random.poisson(poisParam, 1)
 
         # make dadi SFS
-        outfile = base + '.dadi'                 # TODO rename to _dadi_data_sfs.txt
+        outfile = base + '.dadi'
         outF = open(outfile, 'w')
         header = "{0} unfolded\n".format(numChroms + 1)
         outF.write(header)
@@ -1385,7 +1373,6 @@ def snmPoisOneIter(outdir, currProp, idx):
 
 ## model 2: all free params. Default.
 # redundant? default min grid specified in caller
-# TODO make min grid increment by proportions, not absolute amounts
 def fitTwoEpoch(infile, outfile, modelfile, isCluster=True, nuFixed=None, tauFixed=None, minGrid=100, params=None):
     data = dadi.Spectrum.from_file(infile)
     ns = data.sample_sizes
@@ -1399,7 +1386,7 @@ def fitTwoEpoch(infile, outfile, modelfile, isCluster=True, nuFixed=None, tauFix
     elif len(params) != 2:
         sys.exit('Error: initial input parameters must be an array of length two for this model')
     fixed_params=[nuFixed, tauFixed]
-    upper_bound = [1000, 10]           # TODO could reduce this?
+    upper_bound = [1000, 10]
     lower_bound = [1e-8, 1e-8]
     # FIX: `!= None` -> `is not None` (PEP 8; also avoids ambiguous-truth-value
     # errors if a numpy scalar is ever passed).
@@ -1458,8 +1445,7 @@ def fitTwoEpoch(infile, outfile, modelfile, isCluster=True, nuFixed=None, tauFix
     return (popt, ll_opt, theta)
 
 
-# 2014-09-11 Adapted multi case to make pois case. Eventually make into one function
-# todo change params to paramsInit
+
 def fitTwoEpochPois(infile, outfile, modelfile, isCluster=True, nuFixed=None, tauFixed=None, thetaFixed=None, minGrid=100, params=None, maxiter=1000):
     data = dadi.Spectrum.from_file(infile)
     ns = data.sample_sizes
@@ -1470,7 +1456,7 @@ def fitTwoEpochPois(infile, outfile, modelfile, isCluster=True, nuFixed=None, ta
     elif len(params) != 3:
         sys.exit('Error: initial input parameters must be an array of length three for this model')
     fixed_params=[thetaFixed, nuFixed, tauFixed]
-    upper_bound = [20000, 100, 10]           # TODO how to adjust upper bound for theta?
+    upper_bound = [20000, 100, 10]
     lower_bound = [100, 1e-8, 1e-8]
     # FIX: `!= None` -> `is not None`; `exit()` -> `sys.exit(1)`; errors -> stderr.
     # See fitTwoEpoch above for full rationale.
@@ -1540,27 +1526,6 @@ def nestedModelLRT(isCluster, indir, baseA, baseX, allOutfile, minGrid=100):
     modelfile = baseA + '_dadi_model2_sfs.txt'
     logfile = baseA + '-dadi-model2.log'    # for demog optimization
     (poptA, ll_optA, thetaA) = fitTwoEpoch(infile, logfile, modelfile, isCluster, nuFixed=None, tauFixed=None, minGrid=minGrid)         # retry a few times if hit param boundary
-
-# TODO untested code: re-running if hit param boundary
-#     hitParamBoundary = True
-#     ctr = 0
-#     maxIter = 5     # max num to try optimization
-#     tol = 1e-5
-#     if hitParamBoundary == True and ctr < maxIter:
-#         (poptA, ll_optA, thetaA) = fitTwoEpoch(infile, logfile, modelfile, isCluster)         # retry a few times if hit param boundary
-#         upper_bound = [1000, 10]           # TODO could reduce this?
-#         lower_bound = [1e-8, 1e-8]
-#         nuHat = poptA[0]
-#         tauHat = poptA[1]
-#         if (nuHat < lower_bound[0] + tol) or (nuHat > upper_bound[0] - tol) or (tauHat < lower_bound[1] + tol) or (tauHat > upper_bound[1] - tol):
-#             if (nuHat < lower_bound[0]) or (nuHat > upper_bound[0]):
-#                 print 'ERROR nuHat {0} out of bounds: {1} {2}. exiting'.format(nuHat, lower_bound[0], upper_bound[0])
-#             if (tauHat < lower_bound[1]) or (tauHat > upper_bound[1]):
-#                 print 'ERROR tauHat {0} out of bounds: {1} {2}. exiting'.format(tauHat, lower_bound[1], upper_bound[1])
-#             ctr += 1
-#             continue
-#         else:
-#             hitParamBoundary = False
 
     outstr = 'A 2 {0} {1} {2} {3} '.format(ll_optA, poptA[0], poptA[1], thetaA) + '\n'
     allF.write(outstr)
@@ -1769,8 +1734,6 @@ def modelX0Params(params, funcName, LA, LX, alpha):
 
     
 
-# DONE parallelize this by taking in optNum; make general enough for any data set
-# TODO assuptions: LX=LA, muX=muA, multinomial model so theta is not an explict param
 def lrt1DModel(jsonFile, autoOptNum=None, isCluster=True):
     """
     runs nested LRTs on any 1D model
@@ -1807,7 +1770,7 @@ def lrt1DModel(jsonFile, autoOptNum=None, isCluster=True):
         piA = dadi.Spectrum.pi(fsA)
 
         Qtheta = (thetaX / thetaA) / (LX * muX) * (LA * muA)
-        Qpi = (piX / piA) / (LX * muX) * (LA * muA)         # TODO do I want to use mutation rate conversion for pi??
+        Qpi = (piX / piA) / (LX * muX) * (LA * muA)
         ptheta = 2. - (9./8) * (1./Qtheta)
         ppi = 2. - (9./8) * (1./Qpi)
 
@@ -1818,14 +1781,13 @@ def lrt1DModel(jsonFile, autoOptNum=None, isCluster=True):
         outstr = 'Qpi={} using alpha={}: pHat = {}\n'.format(Qpi, alpha, ppi)
         logF.write(outstr)
         logF.close()
-        return          # NOTE this is all for snm so skipping rest of function
+        return
 
 
     ### get best auto opt params ###
     if autoOptNum:       # read autoOptNum file if passed in [to test]
         outfileA = '{}{}.txt'.format(dataDict['filePrefix'], autoOptNum)
         modelfileA = '{}{}.dadi'.format(dataDict['filePrefix'], autoOptNum)
-        # TODO check if file exists and if not set outfileA to None
     else:             # automatically choose opt with best likelihood.
         outfileA, modelfileA = chooseBestOpt(dataDict['filePrefix'], funcName, dataDict['numOpts'])
     if outfileA is None:
@@ -1836,7 +1798,6 @@ def lrt1DModel(jsonFile, autoOptNum=None, isCluster=True):
     fitDict = {}     # key: chrX model name, value: model fit
     lrtModel = {}     # key: model name; value: list of fixed params defining model
     # for each demog model, defined nested X models based on parameters and make a dictionary
-    # TODO make a function? takes funcName, returns lrtModel
     if funcName == 'two_epoch':
         header = 'nu T theta ll_opt\n'
         nu = autoParamDict['nu']
@@ -1945,7 +1906,7 @@ def lrt1DModel(jsonFile, autoOptNum=None, isCluster=True):
     pickle.dump(fitDict, paramF)
     paramF.close()
 
-    # TODO these are two epoch only. update the likelihood differences: specific to each model. use a dictionary?
+    # TODO print out
     # LL_2_1 = LL2 - LL1
     # LL_1_0 = LL1 - LL0
     # outstr = 'LL2 = {0}, LL1 = {1}, LL0 = {2}, ll.2.1 = {3}, ll.1.0 = {4}'.format(LL2, LL1, LL0, LL_2_1, LL_1_0)
@@ -1953,7 +1914,7 @@ def lrt1DModel(jsonFile, autoOptNum=None, isCluster=True):
     allF.close()
 
 
-def get2DNestedModels(funcName, autoParamDict):  ## TODO NOT DONE
+def get2DNestedModels(funcName, autoParamDict):
     """
     for each demog model, defined nested X models based on parameters and make a dictionary
     """
@@ -1967,14 +1928,6 @@ def get2DNestedModels(funcName, autoParamDict):  ## TODO NOT DONE
         lrtModel['X1'] = array([nuB, nuF, None])
         lrtModel['X2'] = array([None, nuF, None])    # allow for sex-biased bottleneck
         lrtModel['X3'] = array([None, None, None])
-#    elif funcName == 'bottlegrowth_split_mig':
-#        # params = (nuB,nuF,m,T,Ts)
-#        nuB = autoParamDict['nuB']
-#        nuF = autoParamDict['nuF']
-#        m = autoParamDict['m']
-#        Ts = autoParamDict['Tp']
-#        T = autoParamDict['T']
-        # TODO write in models
 
     elif funcName == 'prior_onegrow_mig':
         # params = (nu1F, nu2B, nu2F, m, Tp, T)
@@ -1995,7 +1948,7 @@ def get2DNestedModels(funcName, autoParamDict):  ## TODO NOT DONE
     return lrtModel
 
 
-def lrt2DModel(jsonFile, isCluster=True, autoOptNum=None):   ## TODO NOT DONE
+def lrt2DModel(jsonFile, isCluster=True, autoOptNum=None):
     """
     runs nested LRTs on any 2D model
     one case per demographic function
@@ -2007,9 +1960,6 @@ def lrt2DModel(jsonFile, isCluster=True, autoOptNum=None):   ## TODO NOT DONE
     infileA = dataDict['infileA']
     funcName = dataDict['funcName']
     outBaseX = dataDict['outBaseX']
-
-    ### get best auto opt params ###
-    # TODO read autoOptNum file if passed in
 
     # automatically choose opt with best likelihood.
     outfileA, modelfileA = chooseBestOpt(dataDict['filePrefix'], funcName, dataDict['numOpts'])
@@ -2049,7 +1999,7 @@ def lrt2DModel(jsonFile, isCluster=True, autoOptNum=None):   ## TODO NOT DONE
     pickle.dump(fitDict, paramF)
     paramF.close()
 
-    # TODO these are two epoch only. update the likelihood differences: specific to each model. use a dictionary?
+    # TODO these are two epoch only. update the likelihood differences: specific to each model.
     # LL_2_1 = LL2 - LL1
     # LL_1_0 = LL1 - LL0
     # outstr = 'LL2 = {0}, LL1 = {1}, LL0 = {2}, ll.2.1 = {3}, ll.1.0 = {4}'.format(LL2, LL1, LL0, LL_2_1, LL_1_0)
@@ -2146,17 +2096,12 @@ def fitThreeEpoch(infile, outfile, modelfile, isCluster=True, nuBFixed=None, nuF
 
 
 # list of Demographics1D.py fns: two_epoch, growth, bottlegrowth, three_epoch
-# TODO take multi or pois as a param
-# TODO check if fixed values outside of bounds as a vector, not one at at time
-# TODO option to make min grid increment by proportions, not absolute amounts
 # could use in a bottle call: nuBFixed=None, nuFFixed=None, tauBFixed=None, tauFFixed=None,
 # FIX: removed stale "TODO BUG params/fixed_params/lower_bound/upper_bound not
 # used" comment. Inspection of the body shows caller-provided values ARE used
 # when not None (the `if X is None: X = default` blocks below preserve them),
 # and `fixed_params` is forwarded directly to optimize_log_fmin.
 def fit1DModel(infile, outfile, modelfile, funcName, isCluster=True, minGrid=100, maxiter=100, perturb_fold = 2, lower_bound=None, upper_bound=None, params=None, fixed_params=None, logfile=None, timescale=None):
-    # TODO make reasonable upper and lower bounds
-    # TOOD set defaults if not passed in: check values passed in
     """
     one case per demographic function
     """
@@ -2169,8 +2114,6 @@ def fit1DModel(infile, outfile, modelfile, funcName, isCluster=True, minGrid=100
     _prev_timescale_factor = dadi.Integration.timescale_factor
     if timescale:
         dadi.Integration.timescale_factor = timescale
-    # if minGrid > 60:   # HARDCODED NOTE
-        # dadi.Integration.timescale_factor = 1e-4   # re-sets default which is ok for up to 60 grid points. might need larger for very large grid sizes
 
     # if funcName == 'snm':   # special case: can't optimize. Just generate snm fs with appropriate value of theta
     #  func = dadi.Demographics1D.snm
@@ -2258,10 +2201,10 @@ def fit1DModel(infile, outfile, modelfile, funcName, isCluster=True, minGrid=100
         ll_model = dadi.Inference.ll_multinom(model, data)   # lik of starting point - necessary?
         p0 = dadi.Misc.perturb_params(params, fold=perturb_fold, lower_bound=lower_bound, upper_bound=upper_bound)
         if isCluster == True:         # buffer IO
-            flush_delay = 1           # could play with this  # TODO make arg?
+            flush_delay = 1           
         else:
             flush_delay = 0.5         # default
-        # TODO hardcoded for multi: implement choice of poisson
+        # hardcoded for multi
         popt = dadi.Inference.optimize_log_fmin(p0, data, func_ex, pts_l,
                                           lower_bound=lower_bound,
                                            upper_bound=upper_bound,
@@ -2280,13 +2223,12 @@ def fit1DModel(infile, outfile, modelfile, funcName, isCluster=True, minGrid=100
             outF.write(outstr)
 
         model.to_file(modelfile)       # filename fine, doesn't need to be filehandle
-        return (popt, ll_opt, theta)   # TODO maybe put in a param dict specific to each demog fn, or named list/tuple?
+        return (popt, ll_opt, theta)   
     finally:
         dadi.Integration.timescale_factor = _prev_timescale_factor
 
 
 
-###### TODO Write an LRT for bottleneck
 ## for each pair of auto, X:
 # LL = LLA + LLX
 # calc ll.2.1 == LL2 - LL1
@@ -2324,7 +2266,7 @@ def nestedThreeEpochModelLRT(isCluster, indir, baseA, baseX, allOutfile, minGrid
             nuBFixed = poptA[0]
             nuFFixed = poptA[1]
 
-            (poptX, ll_optX, thetaX) = fitThreeEpoch(infile, logfile, modelfile, isCluster, nuBFixed, nuFFixed, tauBFixed=None, tauFFixed=None, minGrid=minGrid)    # TODO constrain tF so times balance
+            (poptX, ll_optX, thetaX) = fitThreeEpoch(infile, logfile, modelfile, isCluster, nuBFixed, nuFFixed, tauBFixed=None, tauFFixed=None, minGrid=minGrid)
             LL1 = ll_optA + ll_optX
 
         elif modelNum == 0:
@@ -2334,7 +2276,7 @@ def nestedThreeEpochModelLRT(isCluster, indir, baseA, baseX, allOutfile, minGrid
             tauBFixed = poptA[2] * 4/3
             tauFFixed = poptA[3] * 4/3
 
-            (poptX, ll_optX, thetaX) = fitThreeEpoch(infile, logfile, modelfile, isCluster, nuBFixed, nuFFixed, tauBFixed, tauFFixed, minGrid=minGrid)    # TODO constrain tF so times balance
+            (poptX, ll_optX, thetaX) = fitThreeEpoch(infile, logfile, modelfile, isCluster, nuBFixed, nuFFixed, tauBFixed, tauFFixed, minGrid=minGrid)
             LL0 = ll_optA + ll_optX
 
         else:
@@ -2466,7 +2408,7 @@ def flattenGridOutput(outfile, xopt, fopt, grid, fout, thetas, funcName):
     """
     func, numParams, paramNames = getFuncByName(funcName)   
 
-    foutList = [str(x) for x in fout.ravel()]  # TODO increase number of sig figs
+    foutList = [str(x) for x in fout.ravel()]
     thetaList = [str(x) for x in thetas.ravel()]
     paramList = [None] * numParams
     for i in range(numParams):    
@@ -2505,7 +2447,7 @@ def maskSnpFile(snpfile, bedfile, outfile, keepBed, idx0Chrom):
         fields = line.split('\t')
         chrom = fields[0]; start = fields[1]; end = fields[2]
         if chrom not in maskDict:
-            maskDict[chrom] = {'starts': [], 'ends': []}   # TODO inefficient? if have list of chroms can do before loop
+            maskDict[chrom] = {'starts': [], 'ends': []}
         maskDict[chrom]['starts'].append(int(start))
         maskDict[chrom]['ends'].append(int(end))
     inF.close()
@@ -2570,7 +2512,6 @@ def makeSinglePopFs(infile, outBase, popNames, projDims, writeDim=False):
         fs.to_file(outfile)
     
 
-# TODO finish writing. try taking in a serialized version of dictionary!
 def edit_trinucl_context(infile, triFile, idx0Tri, idx0Chrom, outfile):
     """
     adds trinucleotide context to a dadi snp file
@@ -2724,8 +2665,7 @@ def ms_command_seed(theta, ns, core, iter, recomb=0, rsites=None, seeds=None):
 
 ########### Developed for most recent LRT with grid search on c, alpha ########
 # hard coded for two demog params
-# TODO error checking here that params are read in and not missing / file was not empty / file was not missing last few formatted lines
-#
+
 def readTwoEpochParams(outfile, isGrid=False):
     """
     reads demog params nu, tau, theta, ll (, c, alpha) from file
@@ -2758,11 +2698,7 @@ def readTwoEpochParams(outfile, isGrid=False):
 
 
 def read1DParams(funcName, outfile, retParamLine=False, likType='multinom'):
-    """
-    ### TODO param string format for three_epoch_X1 and X2 break line format expected by read1DParams: ll_opt is last, and theta should be next-to-last but c  or c1,c2 are last. this means the incorrect thing is returned by popt <2015-09-26 Sat>. Is this now fixed?
-
-    working on fixing: for anything with constraints, pass in likType as pois so the param string format is read
-    
+    """    
     reads demog params specified by model from file
     only reads last line of file and gets params position, not by name
     returns: popt, ll_opt, theta
@@ -2773,7 +2709,7 @@ def read1DParams(funcName, outfile, retParamLine=False, likType='multinom'):
 
     try:
         outF = open(outfile, 'r')
-    except IOError:    # TODO is this what I want??
+    except IOError:
         outstr = 'read1DParams: file with parameters not found and cannot be read from outfile={}'.format(outfile)
         print(outstr)
         return (None, None, None, None)
@@ -2951,7 +2887,6 @@ def convert1DParamsGeneral(params, funcName, mu, L, timeInGens=True, yearsPerGen
 
 
 
-# TODO add sig figs for each field?
 def format1DParams(funcName, popt, theta, ll_opt, multinom=True):
     """
     convenience function for single-pop demographic histories
@@ -2990,15 +2925,14 @@ later encoding: funcName does not need to be hardcoded below because calls getFu
             header = ' '.join(paramNames) + 'll_opt\n'
         except ValueError:
             print('could not getFuncByName')
-            # TODO does this exit?
             
     outstr = header
     for i in range(len(popt)):
         outstr = outstr + ' {:7f}'.format(popt[i])
     if funcName == 'three_epoch_X0' or funcName == 'three_epoch_X1' or funcName == 'three_epoch_X2' or not multinom:    # theta explicit param
-        outstr = outstr + ' {:.14f}\n'.format(ll_opt)   # TODO sig figs: more than is written elsewhere
+        outstr = outstr + ' {:.14f}\n'.format(ll_opt)
     else:            
-        outstr = outstr + ' {:7f} {:.14f}\n'.format(theta, ll_opt)   # TODO sig figs: more than is written elsewhere
+        outstr = outstr + ' {:7f} {:.14f}\n'.format(theta, ll_opt)
     return outstr
 
 
@@ -3070,7 +3004,7 @@ def getMultiLikTwoEpoch(infile, outfile, modelfile, nuFixed, tauFixed, minPts):
     outF = open(outfile, 'w')
     outF.write('Optimized parameters ' + repr(popt) + '\n')
     outF.write('Optimized log-likelihood: ' + str(ll_opt) + '; theta: ' + str(theta) + '\n')
-    outF.write('{:.5f} {:.5f} {:.5f} {:.14f}\n'.format(nuFixed, tauFixed, theta, ll_opt))   # TODO incr sig figs?
+    outF.write('{:.5f} {:.5f} {:.5f} {:.14f}\n'.format(nuFixed, tauFixed, theta, ll_opt))
     outF.close()
     return (popt, ll_opt, theta)
 
@@ -3153,7 +3087,6 @@ def evalLikelihood(funcName, params, infile, outBase=None, minGrid=None, pts_l=N
     # infile, outfile, modelfile, nuFixed, tauFixed, minPts):
     #     params = (nuFixed, tauFixed)
     """
-    NOTE TODO Poisson not completed so likType not used
     get multinomal likelihood of paramaters for a given demographic model
     infile contains data SFS, modelfile gets model SFS written to it, outfile gets params written to it
     outBase: prefix for output files: modelfile, outfile, logfile. if None, do not write anything out.
@@ -3204,9 +3137,6 @@ def evalLikelihood(funcName, params, infile, outBase=None, minGrid=None, pts_l=N
 
 
 
-# TODO re-name vars to be simpler
-# TODO verNum currently unused
-# TODO alphaRange: a list of either 1 or three elements.
 # alphaVals: a list of alpha values to try. passed in by callee, default is 3
 def gridSearchTwoEpochC(nuA, tauA, thetaA, infile, outfile, modelfile, gridfile, verNum, startVal, endVal, numPts, muX, muA, LfourDX, LfourDA, alphaVals=[3]):
     data = dadi.Spectrum.from_file(infile)
