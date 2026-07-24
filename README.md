@@ -10,7 +10,7 @@ All code in the vendor source directory was written by other people.
 ## Setup instructions w/ UV 
 - Clone the repo with `git clone git@github.com:shailamusharoff/sb-private.git`
 - `cd sb-private`
-- Install (uv)[https://docs.astral.sh/uv/] if you haven't already 
+- Install [uv](https://docs.astral.sh/uv/) if you haven't already 
 - `uv venv` to create a virtual environment 
 - `source .venv/bin/activate` to activate the venv
 - `uv pip install -r requirements.txt` to install the requirements
@@ -18,7 +18,7 @@ All code in the vendor source directory was written by other people.
 - run `python examples/run_bottleneck_example.py` to run an example bottleneck with a population ratio of 80/20 males/females. 
 
 ## Brief Documentation 
-We're assuming that you've read the paper and understand the big picture. This section is to give you an overview of the structure of this repo. More detailed documentation can be found in comments around specified functions. 
+We're assuming that you've read the paper and understand the big picture. This section is to give you an overview of the structure of this repo. More detailed documentation can be found in comments around specified functions and by looking in `./examples`. 
 
 ### Core Pipeline in `ms_simulation_two_popps.py`
 - `run_ms_simulation(...)`: Simulates X and autosome site frequency spectrum (SFS) via `ms` and writes `.fs` SFS files to `outdir`. 
@@ -27,13 +27,13 @@ We're assuming that you've read the paper and understand the big picture. This s
 
 ### Building Demographic Models for Simulation
 - `ms_bottle_epoch_split`: 4 epochs (two size changes, then pop. split) 
-- `ms_bottle_split`: 2 epochs (bottleneck then split) 
+- `ms_bottle_split`: 3 epochs (bottleneck then split) 
 - `ms_split_bottle_split`: split, bottleneck, split 
 
 All take in the same arguments and return the corresponding ms command string. The length of times/sizes/propFemales must align with epoch count. 
 
 ### Supporting functions that can be called directly 
 - `fitThreeEpoch(...)`: fits one constrained X model, and `run_sb()` calls it three times, but you can call it once if you want a single model 
-- `lrt.fitThreeEpoch...)`: Standalone 3epoch autosomal fit. 
-- `lrt.read1dParams`: parse original params, LL, and theta from a fit's `.out` file. Used to compute LRT programatically. 
-- `plotSFS(...)`: Plot A vs X spectra from `.f` files. 
+- `lrt.fitThreeEpoch(...)`: Standalone 3epoch autosomal fit. 
+- `lrt.read1DParams`: parse original params, LL, and theta from a fit's `.out` file. Used to compute LRT programatically. 
+- `plotSFS(...)`: Plot A vs X spectra from `.fs` files. 
