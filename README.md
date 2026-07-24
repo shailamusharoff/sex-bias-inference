@@ -17,3 +17,15 @@ All code in the vendor source directory was written by other people.
 - Build ms with ` cd vendor/msdir && ./clms && cp ms ../../.venv/bin/ms && cd ../..` and check the install with `which ms` (should point to ~/wherever-you-have-this-repo/.venv/bin/ms if install worked)
 - run `python examples/run_bottleneck_example.py` to run an example bottleneck with a population ratio of 80/20 males/females. 
 
+## Brief Documentation 
+We're assuming that you've read the paper and understand the big picture. This is just providing documentation for the functions in this repo that you may wish to use directly. 
+- `fitThreeEpoch()`
+    Fits X models that are constrained based on A parameters.
+    newer fn with good timescale
+    Parameters
+    	outfileA: output of auto model fit with param ests at end
+	    likType: multinomial, poisson. TODO used only for file names
+	    infile:  chrX fs file
+  	  multinom: relevant for three_epoch_X_all which has this as an explict param
+    	test of new function lrt:three_epoch_X1
+    Output: written to directory lrt_test or lrt_test_optimize_log in the same directory as infile
