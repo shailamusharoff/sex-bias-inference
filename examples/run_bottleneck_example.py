@@ -46,6 +46,8 @@ REPO = os.path.dirname(HERE)
 sys.path.insert(0, REPO)
 
 import ms_simulation_two_pops as msim
+from dadiLrtFunctions import read1DParams
+from compute_lrt_stats import lrt
 
 
 # --- demography ---------------------------------------------------------
@@ -56,33 +58,40 @@ import ms_simulation_two_pops as msim
 # Four epochs: ancient -> bottleneck -> recovery -> post-split
 # Bottleneck epoch is male-biased (propFemales = 0.2);
 # all others have no sex bias (propFemales = 0.5).
-TIMES        = [10000, 2000,  5000, 5000]
-SIZES        = [10000, 1000, 10000, 10000]
-PROP_FEMALES = [0.5,    0.2,   0.5,   0.5]
+TIMES = [10000, 2000, 5000, 5000]
+SIZES = [10000, 1000, 10000, 10000]
+PROP_FEMALES = [0.5, 0.2, 0.5, 0.5]
 
 # --- simulation parameters ---------------------------------------------
-NUM_SAMPLES = 50            # haploid samples per population
-NUM_REPS    = 1000          # ms replicates
-MU          = 1.5e-8        # per-bp per-generation mutation rate
-L           = int(1e6)      # locus length (bp) per replicate
-SEEDS       = (1, 2, 3)
-SIMNUM      = 1
-OUTDIR      = os.path.join(HERE, 'out')
+NUM_SAMPLES = 50  # haploid samples per population
+NUM_REPS = 1000  # ms replicates
+MU = 1.5e-8  # per-bp per-generation mutation rate
+L = int(1e6)  # locus length (bp) per replicate
+SEEDS = (1, 2, 3)
+SIMNUM = 1
+OUTDIR = os.path.join(HERE, "out")
 
 os.makedirs(OUTDIR, exist_ok=True)
 # fitThreeEpoch (called inside run_sb) writes its outputs to a `lrt_test`
 # subdirectory next to the input SFS, so create it ahead of time.
-os.makedirs(os.path.join(OUTDIR, 'lrt_test'), exist_ok=True)
+os.makedirs(os.path.join(OUTDIR, "lrt_test"), exist_ok=True)
 
 
 # --- Step 1: simulate joint and per-population SFS for autosomes and chrX -----------
-for chromType in ('A', 'X'):
+for chromType in ("A", "X"):
     msim.run_ms_simulation(
         fnName=msim.ms_bottle_epoch_split,
-        numSamples=NUM_SAMPLES, numReps=NUM_REPS, mu=MU, L=L,
+        numSamples=NUM_SAMPLES,
+        numReps=NUM_REPS,
+        mu=MU,
+        L=L,
         chromType=chromType,
-        times=TIMES, sizes=SIZES, propFemales=PROP_FEMALES,
-        seeds=SEEDS, simnum=SIMNUM, outdir=OUTDIR,
+        times=TIMES,
+        sizes=SIZES,
+        propFemales=PROP_FEMALES,
+        seeds=SEEDS,
+        simnum=SIMNUM,
+        outdir=OUTDIR,
     )
 # Produces, for each chromType:
 #   {OUTDIR}/sim_{SIMNUM}_{chromType}_ms.txt     -- raw ms output
@@ -93,30 +102,65 @@ for chromType in ('A', 'X'):
 
 # --- step 2: fit demographic models and run the LRT ---------------------
 POPNUM = 1  # which descendant population to analyze
-fsfileA    = '{}/sim_{}_A_pop{}.fs'.format(OUTDIR, SIMNUM, POPNUM)
-fsfileX    = '{}/sim_{}_X_pop{}.fs'.format(OUTDIR, SIMNUM, POPNUM)
-outfileA   = '{}/sim_{}_A_pop{}_threeEpoch.out'.format(OUTDIR, SIMNUM, POPNUM)
-modelfileA = '{}/sim_{}_A_pop{}_threeEpoch.fs'.format(OUTDIR, SIMNUM, POPNUM)
+fsfileA = "{}/sim_{}_A_pop{}.fs".format(OUTDIR, SIMNUM, POPNUM)
+fsfileX = "{}/sim_{}_X_pop{}.fs".format(OUTDIR, SIMNUM, POPNUM)
+outfileA = "{}/sim_{}_A_pop{}_threeEpoch.out".format(OUTDIR, SIMNUM, POPNUM)
+modelfileA = "{}/sim_{}_A_pop{}_threeEpoch.fs".format(OUTDIR, SIMNUM, POPNUM)
 
 msim.run_sb(fsfileA, fsfileX, outfileA, modelfileA)
 
 
-# --- step 3: report where to find results -------------------------------
-print()
-print('Autosomal fit (three_epoch):')
-print('  {}'.format(outfileA))
-print()
-print('X-chromosomal fits (last line of each = optimized params + log-likelihood):')
-for model in ('X0', 'X1', 'X2'):
+# --- step 3: read log-likelihoods and run the LRT -----------------------
+# Each X model .out file ends with a line of optimized params + log-likelihood;
+# read1DParams (likType="pois") returns ll_opt from that last line.
+xmodels = {}
+for model in ("X0", "X1", "X2"):
     path = os.path.join(
-        OUTDIR, 'lrt_test',
-        'sim_{}_X_pop{}_pois_three_epoch_{}.out'.format(SIMNUM, POPNUM, model),
+        OUTDIR,
+        "lrt_test",
+        "sim_{}_X_pop{}_pois_three_epoch_{}.out".format(SIMNUM, POPNUM, model),
     )
-    print('  {}: {}'.format(model, path))
+    funcName = "three_epoch_{}".format(model)
+    popt, ll_opt, theta, paramDict = read1DParams(funcName, path, likType="pois")
+    xmodels[model] = {"path": path, "ll": ll_opt, "params": paramDict}
+
+# X1 vs X0 (constant sex bias) and X2 vs X1 (epoch-varying sex bias),
+# each 1 extra free parameter -> chi-squared with 1 degree of freedom.
+stat_const, p_const = lrt(xmodels["X0"]["ll"], xmodels["X1"]["ll"], df=1)
+stat_vary, p_vary = lrt(xmodels["X1"]["ll"], xmodels["X2"]["ll"], df=1)
+
+
+# --- step 4: report results ---------------------------------------------
 print()
-print('LRT statistics (compute from the .out files):')
-print('  constant sex bias:       2 * (LL_X1 - LL_X0)  vs  chi-sq(1)')
-print('  epoch-varying sex bias:  2 * (LL_X2 - LL_X1)  vs  chi-sq(1)')
+print("Autosomal fit (three_epoch):")
+print("  {}".format(outfileA))
 print()
-print('Under the male-biased bottleneck above, expect the X1 estimate of c')
-print('to be < 0.75 and the X1-vs-X0 LRT to be significant.')
+print("X-chromosomal fits (log-likelihood from last line of each .out file):")
+for model in ("X0", "X1", "X2"):
+    print(
+        "  {}: ll = {:.4f}  ({})".format(
+            model, xmodels[model]["ll"], xmodels[model]["path"]
+        )
+    )
+print()
+c_x1 = xmodels["X1"]["params"].get("c")
+print(
+    "Estimated constant sex-bias c (X1 model): {:.4f}  (X0 null fixes c = 0.75)".format(
+        c_x1
+    )
+)
+print()
+print("LRT statistics (vs chi-squared with 1 degree of freedom):")
+print(
+    "  constant sex bias      (X1 vs X0):  stat = {:.4f}  p = {:.4g}".format(
+        stat_const, p_const
+    )
+)
+print(
+    "  epoch-varying sex bias (X2 vs X1):  stat = {:.4f}  p = {:.4g}".format(
+        stat_vary, p_vary
+    )
+)
+print()
+print("Under the male-biased bottleneck above, expect the X1 estimate of c")
+print("to be < 0.75 and the X1-vs-X0 LRT to be significant.")
