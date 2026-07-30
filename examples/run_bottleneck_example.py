@@ -143,6 +143,25 @@ for model in ("X0", "X1", "X2"):
         )
     )
 print()
+
+# Nested-consistency guard: X0 is nested in X1 (c fixed at 0.75 vs free) and
+# X1 is nested in X2, so a converged fit must satisfy ll_X0 <= ll_X1 <= ll_X2.
+# A violation means the X optimizer did not converge -- the LRT would then be
+# meaningless (the negative-clamp in lrt() would silently report stat=0, p=1),
+# so warn loudly instead of printing a misleading result.
+ll_X0, ll_X1, ll_X2 = (xmodels[m]["ll"] for m in ("X0", "X1", "X2"))
+if ll_X1 < ll_X0:
+    print(
+        "WARNING: ll_X1 ({:.4f}) < ll_X0 ({:.4f}) -- X1 fit did not converge; "
+        "X1-vs-X0 LRT is not valid. Re-run the fit.".format(ll_X1, ll_X0)
+    )
+if ll_X2 < ll_X1:
+    print(
+        "WARNING: ll_X2 ({:.4f}) < ll_X1 ({:.4f}) -- X2 fit did not converge; "
+        "X2-vs-X1 LRT is not valid. Re-run the fit.".format(ll_X2, ll_X1)
+    )
+print()
+
 c_x1 = xmodels["X1"]["params"].get("c")
 print(
     "Estimated constant sex-bias c (X1 model): {:.4f}  (X0 null fixes c = 0.75)".format(

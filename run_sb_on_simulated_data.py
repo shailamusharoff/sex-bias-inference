@@ -3,9 +3,9 @@ import sys
 import ms_simulation_two_pops as msim
 from dadiLrtFunctions import read1DParams
 
-# compute_lrt_stats lives in examples/; add it to the path so we can reuse
-# the same lrt() helper the example uses (single source of truth).
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "examples"))
+# Reuse the same lrt() helper the example uses (single source of truth).
+# compute_lrt_stats.py lives at the repo root, alongside this script.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from compute_lrt_stats import lrt
 
 

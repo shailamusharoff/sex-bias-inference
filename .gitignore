@@ -1,9 +1,8 @@
- __pycache__/
+__pycache__/
 *.pyc
 .venv/
 .DS_Store
 examples/out/
-vendor/msdir/ms 
-vendor/msdir/seedms 
-vendor/msdir/*.o 
-
+vendor/msdir/ms
+vendor/msdir/seedms
+vendor/msdir/*.o
