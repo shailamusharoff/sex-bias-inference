@@ -22,7 +22,7 @@ This section is to give you an overview of the structure of this repo. More deta
 
 ### Core Pipeline in `ms_simulation_two_pops.py`
 - `run_ms_simulation(...)`: Simulates an X chromosomal and an autosomal site frequency spectrum (SFS) via `ms` and writes `.fs` SFS files to `outdir`. 
-- `run_sb(...)`: fits autosomal model and nested X chromosomal models (X0 with no sex bias, X1 with constant sex bias, X2 with varying sex bias) and produces the sex bias Likelihood Ratio Test (LRT) outputs. 
+- `run_sb(...)`: fits autosomal model and nested X chromosomal models (X0 with no sex bias, X1 with constant sex bias, X2 with varying sex bias) and produces the sex bias Likelihood Ratio Test (LRT) outputs. Both fsfileA and fsfileX must be 1D dadi-format frequency spectrum files (`.fs`). 
 - `run_kimtree(...)`: optional, runs external KimTree binary for alternate analysis method. 
 
 ### Building Demographic Models for Simulation
