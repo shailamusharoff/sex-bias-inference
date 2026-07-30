@@ -7,7 +7,7 @@ Please contact the first author with questions: sam442@cornell.edu
 
 Note: the "vendor" source directory contains code written by others, specifically Hudson's program `ms`, which is used to simulate data in the example.
 
-## Setup instructions with virtual environment 
+## Setup instructions with virtual environment + Running Example 
 - Clone the repo with `git clone git@github.com:shailamusharoff/sb-private.git`
 - `cd sb-private`
 - Install [uv](https://docs.astral.sh/uv/) if you haven't already 
@@ -15,14 +15,14 @@ Note: the "vendor" source directory contains code written by others, specificall
 - `source .venv/bin/activate` to activate the venv
 - `uv pip install -r requirements.txt` to install the requirements
 - Build ms with ` cd vendor/msdir && ./clms && cp ms ../../.venv/bin/ms && cd ../..` and check the install with `which ms` (should point to the location of this repo which contains .venv/bin/ms if the install worked)
-- run `python examples/run_bottleneck_example.py` to run an example bottleneck with a population ratio of 80/20 males/females (so, a proportion female of 0.20). 
+- run `python examples/run_bottleneck_example.py` to run an example bottleneck with a population ratio of 80/20 males/females.
 
 ## Brief Documentation 
 This section is to give you an overview of the structure of this repo. More detailed documentation can be found in comments around specified functions and by looking in `./examples`, and the paper cited above contains a full description of the method.
 
 ### Core Pipeline in `ms_simulation_two_pops.py`
 - `run_ms_simulation(...)`: Simulates an X chromosomal and an autosomal site frequency spectrum (SFS) via `ms` and writes `.fs` SFS files to `outdir`. 
-- `run_sb(...)`: fits autosomal model and nested X chromosomal models (X0 with no sex bias, X1 with constant sex bias, X2 with varying sex bias) and produces the sex bias Likelihood Ratio Test (LRT) outputs. Both fsfileA and fsfileX must be 1D dadi-format frequency spectrum files (`.fs`). 
+- `run_sb(...)`: fits autosomal model and nested X chromosomal models (X0 with no sex bias, X1 with constant sex bias, X2 with varying sex bias) and produces the sex bias Likelihood Ratio Test (LRT) outputs. Both fsfileA and fsfileX must be 1D dadi-format frequency spectrum files (`.fs`).
 - `run_kimtree(...)`: optional, runs external KimTree binary for alternate analysis method. 
 
 ### Building Demographic Models for Simulation
