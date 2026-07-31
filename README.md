@@ -16,7 +16,7 @@ Note: the "vendor" source directory contains code written by others, specificall
 - `uv venv` to create a virtual environment 
 - `source .venv/bin/activate` to activate the venv
 - `uv pip install -r requirements.txt` to install the requirements
-- Build ms with ` cd vendor/msdir && ./clms && cp ms ../../.venv/bin/ms && cd ../..` and check the install with `which ms` (should point to the location of this repo which contains .venv/bin/ms if the install worked)
+- Build ms with ` cd vendor/msdir && ./clms && cp ms ../../.venv/bin/ms && cd ../..` and check the install with `which ms` (should point to the location of this repo which contains .venv/bin/ms if the install worked). This will throw some warnings, but they aren't problematic. 
 - run `python examples/run_bottleneck_example.py` to run an example with a male-biased bottleneck (proportion of females 0.2) and no sex-bias outside the bottleneck (proportion of females 0.5).
 
 ## Brief Documentation 
