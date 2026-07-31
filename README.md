@@ -15,7 +15,7 @@ Note: the "vendor" source directory contains code written by others, specificall
 - `source .venv/bin/activate` to activate the venv
 - `uv pip install -r requirements.txt` to install the requirements
 - Build ms with ` cd vendor/msdir && ./clms && cp ms ../../.venv/bin/ms && cd ../..` and check the install with `which ms` (should point to the location of this repo which contains .venv/bin/ms if the install worked)
-- run `python examples/run_bottleneck_example.py` to run an example with a male-biased bottleneck (80% males, 20% females).
+- run `python examples/run_bottleneck_example.py` to run an example with a male-biased bottleneck (proportion of females 0.2) and no sex-bias outside the bottleneck (proportion of females 0.5).
 
 ## Brief Documentation 
 This section is an overview of the structure of this repo. More detailed documentation can be found in comments around specified functions and by looking in `./examples`, and the paper cited above contains a full description of the method.
@@ -41,7 +41,7 @@ The output consists of likelihood ratio tests for sex-bias along with expected s
 All take in the same arguments and return the corresponding ms command string. The length of times/sizes/propFemales must align with epoch count. 
 
 ### Supporting functions that can be called directly 
-- `fitThreeEpoch(...)`: fits one constrained X model. `run_sb()` calls it three times, once for each relevant X model, but you can call it once if you want a single model. 
+- `fitThreeEpoch(...)`: fits one constrained X model. `run_sb()` calls it three times, once for each relevant X model, but you can call it once if you want to fit a single model. 
 - `lrt.fitThreeEpoch(...)`: standalone 3-epoch autosomal fit. 
 - `lrt.read1DParams`: parse original params, LL, and theta from a fit's `.out` file. Used to compute LRT programmatically. 
 - `plotSFS(...)`: Plot autosomal (A) vs X chromosomal (X) site frequency spectra from `.fs` files. 
