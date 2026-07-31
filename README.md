@@ -18,11 +18,19 @@ Note: the "vendor" source directory contains code written by others, specificall
 - run `python examples/run_bottleneck_example.py` to run an example with a male-biased bottleneck (80% males, 20% females).
 
 ## Brief Documentation 
-This section is to give you an overview of the structure of this repo. More detailed documentation can be found in comments around specified functions and by looking in `./examples`, and the paper cited above contains a full description of the method.
+This section is an overview of the structure of this repo. More detailed documentation can be found in comments around specified functions and by looking in `./examples`, and the paper cited above contains a full description of the method.
+
+The input data are an autosomal and X-chromosmal 1-dimensional (1D) data-format frequency spectrum files (`.fs`). See the dadi documention for this format: https://github.com/RyanGutenkunst/dadi
+
+The pipeline below gives the option of simulating data with the program ms.
+
+In either case, a demographic model must be specified; the default model in the example below is a three-epoch model.
+
+The output consists of likelihood ratio tests for sex-bias along with expected site freqeuency spectra for each model.
 
 ### Core Pipeline in `ms_simulation_two_pops.py`
 - `run_ms_simulation(...)`: [start here if simulating data] Simulates an X chromosomal and an autosomal site frequency spectrum (SFS) via `ms` and writes `.fs` SFS files to `outdir`. 
-- `run_sb(...)`: [start here if using your own data] fits autosomal model and nested X chromosomal models (X0 with no sex bias, X1 with constant sex bias, X2 with varying sex bias) and produces the sex bias Likelihood Ratio Test (LRT) outputs. Both fsfileA and fsfileX must be 1D dadi-format frequency spectrum files (`.fs`).
+- `run_sb(...)`: [start here if using your own data] Fits autosomal model and nested X chromosomal models (X0 with no sex bias, X1 with constant sex bias, X2 with varying sex bias) and produces the sex bias Likelihood Ratio Test (LRT) outputs. Both input files, fsfileA (autosomal) and fsfileX (X-chromosomal), must be 1D dadi-format frequency spectrum files (`.fs`).
 - `run_kimtree(...)`: [optional] runs external KimTree binary for alternate analysis method. 
 
 ### Simulating data with ms
