@@ -115,14 +115,14 @@ msim.run_sb(fsfileA, fsfileX, outfileA, modelfileA)
 # read1DParams (likType="pois") returns ll_opt from that last line.
 xmodels = {}
 for model in ("X0", "X1", "X2"):
-    path = os.path.join(
+    outfile = os.path.join(
         OUTDIR,
         "lrt_test",
         "sim_{}_X_pop{}_pois_three_epoch_{}.out".format(SIMNUM, POPNUM, model),
     )
     funcName = "three_epoch_{}".format(model)
-    popt, ll_opt, theta, paramDict = read1DParams(funcName, path, likType="pois")
-    xmodels[model] = {"path": path, "ll": ll_opt, "params": paramDict}
+    popt, ll_opt, theta, paramDict = read1DParams(funcName, outfile, likType="pois")
+    xmodels[model] = {"outfile": outfile, "ll": ll_opt, "params": paramDict}
 
 # X1 vs X0 (constant sex bias) and X2 vs X1 (epoch-varying sex bias),
 # each 1 extra free parameter -> chi-squared with 1 degree of freedom.
@@ -139,7 +139,7 @@ print("X-chromosomal fits (log-likelihood from last line of each .out file):")
 for model in ("X0", "X1", "X2"):
     print(
         "  {}: ll = {:.4f}  ({})".format(
-            model, xmodels[model]["ll"], xmodels[model]["path"]
+            model, xmodels[model]["ll"], xmodels[model]["outfile"]
         )
     )
 print()

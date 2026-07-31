@@ -581,7 +581,7 @@ def fitThreeEpoch(
 
 
 def run_sb(fsfileA, fsfileX, outfileA, modelfileA):
-    """Works. Fixed simulationBottlenecks_functions.py:fitThreeEpoch functions
+    """Fixed simulationBottlenecks_functions.py:fitThreeEpoch functions
     Fits autosomal and X-chromosomal models
     Writes outfiles: <fsfileX without .fs>_pois_three_epoch_(X0,X1,X2).(out, dadi)
     Updated to use fitThreeEpoch function here, with constraints. Did not change main function because is used by other code, e.g. bottleneck simulations
