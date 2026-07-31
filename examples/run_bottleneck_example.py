@@ -168,6 +168,12 @@ print(
         c_x1
     )
 )
+
+# TODO print c1, c2 from model X2, technically only if LRT for X1 vs. X2 is significant
+# c1_x2 = xmodels["X2"]["params"].get("c1")
+# c2_x2 = xmodels["X2"]["params"].get("c2")
+# print
+
 print()
 print("LRT statistics (vs chi-squared with 1 degree of freedom):")
 print(
@@ -181,5 +187,9 @@ print(
     )
 )
 print()
+
+# TODO choose best model based on p-values and nesting (choose the model which is significant and most complex, and all inner models are significant; here, X2)
+
+# TODO update conclusion based on the above
 print("Under the male-biased bottleneck above, expect the X1 estimate of c")
 print("to be < 0.75 and the X1-vs-X0 LRT to be significant.")

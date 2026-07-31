@@ -5,6 +5,8 @@ Musharoff S, Shringarpure S, Bustamante CD, Ramachandran S (2019) The inference 
 
 Please contact the first author with questions: sam442@cornell.edu
 
+Thank you to Zander Schatzberg for help with modernizing this code!
+
 Note: the "vendor" source directory contains code written by others, specifically Hudson's program `ms`, which is used to simulate data in the example.
 
 ## Setup instructions with virtual environment + Running Example 
@@ -31,7 +33,7 @@ The output consists of likelihood ratio tests for sex-bias along with expected s
 ### Core Pipeline in `ms_simulation_two_pops.py`
 - `run_ms_simulation(...)`: [start here if simulating data] Simulates an X chromosomal and an autosomal site frequency spectrum (SFS) via `ms` and writes `.fs` SFS files to `outdir`. 
 - `run_sb(...)`: [start here if using your own data] Fits autosomal model and nested X chromosomal models (X0 with no sex bias, X1 with constant sex bias, X2 with varying sex bias) and produces the sex bias Likelihood Ratio Test (LRT) outputs. Both input files, fsfileA (autosomal) and fsfileX (X-chromosomal), must be 1D dadi-format frequency spectrum files (`.fs`).
-- `run_kimtree(...)`: [optional] runs external KimTree binary for alternate analysis method. 
+- `run_kimtree(...)`: [optional] Runs external KimTree binary for alternate analysis method. 
 
 ### Simulating data with ms
 - `ms_bottle_epoch_split`: 4 epochs (two size changes, then population split) 
