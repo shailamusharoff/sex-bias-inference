@@ -456,240 +456,6 @@ def OOAAsn(params, n1, pts):
     return fs
 
 
-def gravel_eur_single_pop(params, ns, pts):
-    """
-    A one-population model used to model European out-of-Africa demography.
-    Tennesen et al model
-    timegrowthEu
-    """
-    # params used below: TAf, nuAf0, TEuAs, TB, timerowthEu, nuEu0, nuEu1, initialgrowth, nuEu2, nuEu1
-    (nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu) = params
-    xx = Numerics.default_grid(pts)
-
-    # first step: a single population
-    phi = PhiManip.phi_1D(xx)
-
-    # integrate for time TAf (with constant population)
-    phi = Integration.one_pop(phi, xx, TAf, nu=nuAf0)
-
-    initialgrowth = TEuAs + TB - timegrowthEu
-    nuEu_func = lambda t: (
-        nuEu0
-        * (nuEu1 / nuEu0) ** (min(t, initialgrowth) / initialgrowth)
-        * (nuEu2 / nuEu1) ** (max(0, t - initialgrowth) / (TB + TEuAs - initialgrowth))
-    )
-
-    # changed to one-pop integration
-    # phi = Integration.two_pops(phi, xx, TB+TEuAs, nu1=nuAf_func, nu2=nuEu_func, m12=mAfB, m21=mAfB)
-    phi = Integration.one_pop(phi, xx, TB + TEuAs, nu=nuEu_func)
-
-    fs = Spectrum.from_phi(phi, ns, (xx,))
-    return fs
-
-
-def gravel_eur_single_pop_evalLik(params, ns, pts, LA, LX):
-    """
-    convenience function to evaluate likelihood gravel function
-    """
-    (nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu) = params
-
-
-def gravel_eur_single_pop_LRT(params, ns, pts, LA, LX, modelType):
-    """
-    chrX LRT on CEU gravel model extrapolated single-pop, more complex
-    TB: Length of bottleneck (in units of 2*Na generations) -- guess
-    """
-
-    (nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu) = params
-    fitDict = {"A": {}, "X2": {}, "X1": {}, "X0": {}}
-
-    # constants and file names
-    LA = 3509211.0  # autosomal capture region that passed mask filter: chr1-22: 3509211
-    LX = 135064
-    muA = 2.36e-8  # simon's value
-    likType = "multi"
-    optNum = 0
-    popName = "CEU"
-    siteType = "syn"
-    indir = "/Users/shaila/projects/hgdp-x/results/2014-07-01_1KG-syn-ns/VCFMultiPop/singlePopSFS/"
-    outdir = "/Users/shaila/projects/hgdp-x/data/2014-07-01_1KG-syn-ns/1kG/VCFPerPop/{}/goodness-of-fit/".format(
-        popName
-    )
-    isCluster = False
-    minGrid = 150
-    maxiter = 100
-
-    funcName = "gravel_eur_single_pop"
-    func = lrt.gravel_eur_single_pop
-    func_ex = dadi.Numerics.make_extrap_log_func(func)
-
-    ## plug in params from Simon's ESP paper
-    # params = array([nuAf0=1.983, nuB=0.25, nuEu0=0.141, nuEu1=1.274, TAf=0.4054, TEuAs=0.0630, TB=0.1397, nuEu2=70.137, timegrowthEu=0.00171])
-    # params = array([1.983, 0.25, 0.141, 1.274, 0.4054, 0.0630, 0.1397, 70.137, 0.00171])
-    nuAf0 = 1.983
-    nuB = 0.25
-    nuEu0 = 0.141
-    nuEu1 = 1.274
-    TAf = 0.4054
-    TEuAs = 0.0630
-    TB = 0.1397
-    nuEu2 = 70.137
-    timegrowthEu = 0.00171
-
-    ##### Auto #####
-    if modelType == "A":  ## just eval lik
-        chrom = "Auto"
-        base = "{}_{}_EXOMEonly_dadi_snp_reference_{}".format(chrom, popName, siteType)
-
-        params = array([nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu])
-        # fixed_params = (nuAf0=1.983, TAf=0.4054, nuB=0.25, TB=0.1397, nuEu0=0.141, nuEu1=1.274, TEuAs=0.0630, nuEu2=70.137, timegrowthEu=0.00171)
-        # gravel_eur_single_pop(params, ns)   # TODO adjust call
-
-        infile = indir + base + ".dadi"
-        outBase = (
-            outdir + base + "_model_{}_{}_opt{}".format(modelType, funcName, optNum)
-        )
-        popt, ll_opt, theta = evalLikelihood(
-            func, params, infile, minPts, outBase
-        )  # TODO test
-
-        # plot data vs model
-        outfile = outdir + base + "_{}_fixedParams_resid.png".format(funcName)
-        main = "CEU: complex Tennesen model fixed for params"
-        myPlot.plot_1d_comp_multinom(
-            model, data, fs_labels=("model", "data"), outfile=outfile, main=main
-        )
-        popt = params  # all params fixed
-        fitDict[modelType] = {
-            "infile": infile,
-            "modelfile": modelfile,
-            "popt": popt,
-            "ll": ll,
-            "theta": theta,
-        }
-
-    ########## chrX #########
-
-    #### chrX: model 0 ####     ## just eval lik
-    # X0: p=0.5, p constant
-    # fix nu and scale tau by 4./3: just eval likeilhood
-    if modelType == "X0":
-        chrom = "X"
-        # start optimizing here: expected chrX params under the null
-        params = array(
-            [
-                nuAf0,
-                nuB,
-                nuEu0,
-                nuEu1,
-                4.0 / 3 * TAf,
-                4.0 / 3 * TEuAs,
-                4.0 / 3 * TB,
-                nuEu2,
-                4.0 / 3 * timegrowthEu,
-            ]
-        )  # fixed
-        fixed_params = params
-        base = "{}_{}_EXOMEonly_dadi_snp_reference_{}".format(
-            chrom, popName, siteType
-        )  # TODO rename this bc reserved name
-        infile = indir + base + ".dadi"
-        outBase = (
-            outdir + base + "_model_{}_{}_opt{}".format(modelType, funcName, optNum)
-        )
-        popt, ll_opt, theta = evalLikelihood(
-            func, params, infile, minPts, outBase
-        )  # TODO test
-        phat = nested.estPSimple(
-            indir, outdir, popName, siteType, modelType, funcName, muA, LA, LX, 3, 0
-        )  # TODO this has hard-coded file names; update
-        fitDict[modelType] = {
-            "infile": infile,
-            "modelfile": modelfile,
-            "popt": popt,
-            "ll": ll,
-            "theta": theta,
-            "phat": phat,
-        }
-
-    ### chrX: model 1 ###
-    # X1: p free, p constant
-    if modelType == "X1":
-        chrom = "X"
-        params = array(
-            [
-                nuAf0,
-                nuB,
-                nuEu0,
-                nuEu1,
-                4.0 / 3 * TAf,
-                4.0 / 3 * TEuAs,
-                4.0 / 3 * TB,
-                nuEu2,
-                4.0 / 3 * timegrowthEu,
-            ]
-        )
-        fixed_params = array([nuAf0, nuB, nuEu0, nuEu1, None, None, None, nuEu2, None])
-
-    ### chrX: model 2 ###
-    # X2: p=0.5 and bottleneck params nuB and TB can differ
-    if modelType == "X2":
-        chrom = "X"
-        params = array(
-            [
-                nuAf0,
-                nuB,
-                nuEu0,
-                nuEu1,
-                4.0 / 3 * TAf,
-                4.0 / 3 * TEuAs,
-                4.0 / 3 * TB,
-                nuEu2,
-                4.0 / 3 * timegrowthEu,
-            ]
-        )
-        fixed_params = array(
-            [
-                nuAf0,
-                None,
-                nuEu0,
-                nuEu1,
-                4.0 / 3 * TAf,
-                4.0 / 3 * TEuAs,
-                None,
-                nuEu2,
-                4.0 / 3 * timegrowthEu,
-            ]
-        )
-
-    ### chrX: model 3 ###
-    # X3: all is free
-    if modelType == "X3":
-        chrom = "X"
-        params = array(
-            [
-                nuAf0,
-                nuB,
-                nuEu0,
-                nuEu1,
-                4.0 / 3 * TAf,
-                4.0 / 3 * TEuAs,
-                4.0 / 3 * TB,
-                nuEu2,
-                4.0 / 3 * timegrowthEu,
-            ]
-        )
-
-    return fitDict
-
-
-#    # write dict to file: picke, and human readable
-#    pklFile = indir + 'CEU_bottlegrowth_phat.pkl'
-#    pklF = open(pklFile, 'wb')
-#    pickle.dump(fitDict, pklF)
-#    pklF.close()
-
-
 ################ Demographic functions for LRT: constrain X params ################
 
 
@@ -2049,25 +1815,6 @@ def modelX0Params(params, funcName, LA, LX, alpha):
         TC *= 4.0 / 3
         paramsExpected = [nuB, nuF, nuC, TB, TF, TC, theta]
 
-    elif funcName == "gravel_eur_single_pop":
-        nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu, theta = params
-        theta *= cFactor
-        TAf *= 4.0 / 3
-        TEuAs *= 4.0 / 3
-        TB *= 4.0 / 3
-        timegrowthEu *= 4.0 / 3
-        paramsExpected = [
-            nuAf0,
-            nuB,
-            nuEu0,
-            nuEu1,
-            TAf,
-            TEuAs,
-            TB,
-            nuEu2,
-            timegrowthEu,
-            theta,
-        ]
     else:
         sys.exit("3: func name invalid: {}".format(funcName))
     return paramsExpected
@@ -2208,48 +1955,6 @@ def lrt1DModel(jsonFile, autoOptNum=None, isCluster=True):
             [None, nuF, nuC, None, 4.0 / 3 * TF, 4.0 / 3 * TC]
         )  # allow for sex-biased bottleneck
         lrtModel["X3"] = array([None, None, None, None, None, None])
-
-    elif funcName == "gravel_eur_single_pop":
-        header = "nuAf0 nuB nuEu0 nuEu1 TAf TEuAs TB nuEu2 timegrowthEu theta ll_opt\n"
-        nuAf0 = autoParamDict["nuAf0"]
-        nuB = autoParamDict["nuB"]
-        nuEu0 = autoParamDict["nuEu0"]
-        nuEu1 = autoParamDict["nuEu1"]
-        nuEu2 = autoParamDict["nuEu2"]
-        TAf = autoParamDict["TAf"]
-        TEuAs = autoParamDict["TEuAs"]
-        TB = autoParamDict["TB"]
-        timegrowthEu = autoParamDict["timegrowthEu"]
-        lrtModel["X0"] = array(
-            [
-                nuAf0,
-                nuB,
-                nuEu0,
-                nuEu1,
-                4.0 / 3 * TAf,
-                4.0 / 3 * TEuAs,
-                4.0 / 3 * TB,
-                nuEu2,
-                4.0 / 3 * timegrowthEu,
-            ]
-        )
-        lrtModel["X1"] = array(
-            [nuAf0, nuB, nuEu0, nuEu1, None, None, None, nuEu2, None]
-        )
-        lrtModel["X2"] = array(
-            [
-                nuAf0,
-                None,
-                nuEu0,
-                nuEu1,
-                4.0 / 3 * TAf,
-                4.0 / 3 * TEuAs,
-                None,
-                nuEu2,
-                4.0 / 3 * timegrowthEu,
-            ]
-        )  # allow for sex-biased bottleneck
-        lrtModel["X3"] = array([None, None, None, None, None, None, None, None, None])
 
     else:
         sys.exit("2: func name invalid: {}".format(funcName))
@@ -2679,28 +2384,6 @@ def fit1DModel(
             params = array([0.1, 5.0, 50, 0.5, 0.1, 0.1])
         if lower_bound is None:
             lower_bound = [1e-8, 1e-8, 1e-8, 1e-8, 1e-8, 1e-8]
-    elif funcName == "gravel_eur_single_pop":  # params = (nuB, nuF, nuC, TB, TF)
-        numParams = 5
-        func = gravel_eur_single_pop  # params (nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu)
-        # start opt at Simon's CEU estimates
-        nuAf0 = 1.983
-        nuB = 0.25
-        nuEu0 = 0.141
-        nuEu1 = 1.274
-        TAf = 0.4054
-        TEuAs = 0.0630
-        TB = 0.1397
-        nuEu2 = 70.137
-        timegrowthEu = 0.00171
-        if params is None:
-            params = array(
-                [nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu]
-            )
-        if upper_bound is None:
-            upper_bound = [1e4, 1e2, 1e4, 1e4, 3, 3, 3, 1e4, 3]
-        if lower_bound is None:
-            lower_bound = [1e-2, 1e-2, 1e-2, 1e-2, 0, 0, 0, 1e-2, 0]
-
     else:
         sys.exit("1: func name invalid: {}".format(funcName))
 
@@ -3486,31 +3169,6 @@ def convert1DParamsGeneral(params, funcName, mu, L, timeInGens=True, yearsPerGen
             TC *= 2.0 * Nanc * yearsPerGen
         paramsExpected = [nuB, nuF, nuC, TB, TF, TC, theta]
 
-    elif funcName == "gravel_eur_single_pop":
-        nuAf0, nuB, nuEu0, nuEu1, TAf, TEuAs, TB, nuEu2, timegrowthEu, theta = params
-        Nanc = theta / (4.0 * mu * L)
-        if timeInGens:
-            TAf *= 2.0 * Nanc
-            TEuAs *= 2.0 * Nanc
-            TB *= 2.0 * Nanc
-            timegrowthEu *= 2.0 * Nanc
-        else:
-            TAf *= 2.0 * Nanc * yearsPerGen
-            TEuAs *= 2.0 * Nanc * yearsPerGen
-            TB *= 2.0 * Nanc * yearsPerGen
-            timegrowthEu *= 2.0 * Nanc * yearsPerGen
-        paramsExpected = [
-            nuAf0,
-            nuB,
-            nuEu0,
-            nuEu1,
-            TAf,
-            TEuAs,
-            TB,
-            nuEu2,
-            timegrowthEu,
-            theta,
-        ]
     else:
         sys.exit("3: func name invalid: {}".format(funcName))
 
@@ -3547,9 +3205,6 @@ def format1DParams(funcName, popt, theta, ll_opt, multinom=True):
         header = "nuB nuF TB TF theta ll_opt\n"
     elif funcName == "threeEpochGrowth":
         header = "nuB nuF nuC TB TF TC theta ll_opt\n"
-    elif funcName == "gravel_eur_single_pop":
-        header = "nuAf0 nuB nuEu0 nuEu1 TAf TEuAs TB nuEu2 timegrowthEu theta ll_opt\n"
-
     else:
         try:
             func, numParams, paramNames = getFuncByName(funcName)
@@ -3711,20 +3366,6 @@ def getFuncByName(funcName):
     ):  # params = (nuB', ' nuF', ' nuC', ' TB', ' TF)
         func = threeEpochGrowth_P
         paramNames = ["nuB", "nuF", "nuC", "TB", "TF", "TC", "theta"]
-
-    elif funcName == "gravel_eur_single_pop":
-        func = gravel_eur_single_pop
-        paramNames = [
-            "nuAf0",
-            "nuB",
-            "nuEu0",
-            "nuEu1",
-            "TAf",
-            "TEuAs",
-            "TB",
-            "nuEu2",
-            "timegrowthEu",
-        ]
 
     else:
         sys.exit("1: func name invalid: {}".format(funcName))

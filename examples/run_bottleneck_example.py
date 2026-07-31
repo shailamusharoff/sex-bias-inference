@@ -129,6 +129,15 @@ for model in ("X0", "X1", "X2"):
 stat_const, p_const = lrt(xmodels["X0"]["ll"], xmodels["X1"]["ll"], df=1)
 stat_vary, p_vary = lrt(xmodels["X1"]["ll"], xmodels["X2"]["ll"], df=1)
 
+# Best model: the most complex model whose entire nested chain is significant.
+ALPHA = 0.05
+if p_const < ALPHA and p_vary < ALPHA:
+    best = "X2"
+elif p_const < ALPHA:
+    best = "X1"
+else:
+    best = "X0"
+
 
 # --- step 4: report results ---------------------------------------------
 print()
@@ -169,10 +178,12 @@ print(
     )
 )
 
-# TODO print c1, c2 from model X2, technically only if LRT for X1 vs. X2 is significant
-# c1_x2 = xmodels["X2"]["params"].get("c1")
-# c2_x2 = xmodels["X2"]["params"].get("c2")
-# print
+if best == "X2":  # epoch-varying sex bias is significant, so report c1, c2
+    print(
+        "Estimated epoch-varying sex-bias (X2 model): c1 = {:.4f}, c2 = {:.4f}".format(
+            xmodels["X2"]["params"].get("c1"), xmodels["X2"]["params"].get("c2")
+        )
+    )
 
 print()
 print("LRT statistics (vs chi-squared with 1 degree of freedom):")
@@ -188,8 +199,12 @@ print(
 )
 print()
 
-# TODO choose best model based on p-values and nesting (choose the model which is significant and most complex, and all inner models are significant; here, X2)
-
-# TODO update conclusion based on the above
-print("Under the male-biased bottleneck above, expect the X1 estimate of c")
-print("to be < 0.75 and the X1-vs-X0 LRT to be significant.")
+# Best-supported model = most complex model whose full nested chain is significant.
+labels = {
+    "X0": "no sex bias",
+    "X1": "constant sex bias",
+    "X2": "epoch-varying sex bias",
+}
+print("Best-supported model (alpha = {}): {} ({})".format(ALPHA, best, labels[best]))
+print("Under the male-biased bottleneck above, expect X2 (epoch-varying sex bias),")
+print("with the X1 estimate of c < 0.75.")
