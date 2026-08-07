@@ -48,14 +48,22 @@ All take in the same arguments and return the corresponding ms command string. T
 - `lrt.read1DParams`: parse original params, LL, and theta from a fit's `.out` file. Used to compute LRT programmatically. 
 - `plotSFS(...)`: Plot autosomal (A) vs X chromosomal (X) site frequency spectra from `.fs` files. 
 
-### Going from parameter c to proportion of females 
-Going from the parameter c output by our software to the proportion of females, p:
+### Going from the parameter $c$ to the proportion of females $p$
 
-As noted in the Supporting Information of our paper, $c = \frac{NeX}{NeA}$
+As noted in the Supporting Information of our paper, the parameter $c$ output by our software is the ratio of the X-chromosomal to the autosomal effective population size:
 
-For proportion of females p, from Eqs. 1 and 2 in our paper:
-   $NeA = 4p * (1-p) * N$
-   $NeX = \frac{(9p * (1-p))}{(2 * (2-p))} * N$
+$$c = \frac{N_{e,X}}{N_{e,A}}$$
 
-Taking their ratio gives $c = \frac{NeX}{NeA} = \frac{9}{(8 * (2-p))}$, and rearranging gives $p = 2 - 9/(8*c)$. 
-Plugging in either place gives the expected relationship of $c= 0.75$, $p=0.5$ in the case of no sex bias.
+For a proportion of females $p$, Eqs. 1 and 2 in our paper give
+
+$$N_{e,A} = 4p(1-p)N, \qquad N_{e,X} = \frac{9p(1-p)}{2(2-p)}N.$$
+
+Taking their ratio gives
+
+$$c = \frac{N_{e,X}}{N_{e,A}} = \frac{9}{8(2-p)},$$
+
+and rearranging gives
+
+$$p = 2 - \frac{9}{8c}.$$
+
+Plugging into either expression gives the expected relationship $c = 0.75 \iff p = 0.5$ in the case of no sex bias.
