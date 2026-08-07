@@ -52,7 +52,7 @@ All take in the same arguments and return the corresponding ms command string. T
 
 As noted in the Supporting Information of our paper, the parameter $c$ output by our software is the ratio of the X-chromosomal to the autosomal effective population size:
 
-$$c = \frac{N_{e,X}}{N_{e,A}}$$
+$$c = \fracN_{e}X}{N_{e}A}$$
 
 For a proportion of females $p$, Eqs. 1 and 2 in our paper give
 
@@ -60,7 +60,7 @@ $$N_{e,A} = 4p(1-p)N, \qquad N_{e,X} = \frac{9p(1-p)}{2(2-p)}N.$$
 
 Taking their ratio gives
 
-$$c = \frac{N_{e,X}}{N_{e,A}} = \frac{9}{8(2-p)},$$
+$$c = \frac{N_{e}X}{N_{e}A} = \frac{9}{8(2-p)},$$
 
 and rearranging gives
 
