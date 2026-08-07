@@ -47,3 +47,15 @@ All take in the same arguments and return the corresponding ms command string. T
 - `lrt.fitThreeEpoch(...)`: standalone 3-epoch autosomal fit. 
 - `lrt.read1DParams`: parse original params, LL, and theta from a fit's `.out` file. Used to compute LRT programmatically. 
 - `plotSFS(...)`: Plot autosomal (A) vs X chromosomal (X) site frequency spectra from `.fs` files. 
+
+### Going from parameter c to proportion of females 
+Going from the parameter c output by our software to the proportion of females, p:
+
+As noted in the Supporting Information of our paper, $c = \frac{NeX}{NeA}$
+
+For proportion of females p, from Eqs. 1 and 2 in our paper:
+   $NeA = 4p * (1-p) * N$
+   $NeX = \frac{(9p * (1-p))}{(2 * (2-p))} * N$
+
+Taking their ratio gives $c = \frac{NeX}{NeA} = \frac{9}{(8 * (2-p))}$, and rearranging gives $p = 2 - 9/(8*c)$. 
+Plugging in either place gives the expected relationship of $c= 0.75$, $p=0.5$ in the case of no sex bias.
