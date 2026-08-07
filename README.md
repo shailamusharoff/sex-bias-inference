@@ -67,3 +67,5 @@ and rearranging gives
 $$p = 2 - \frac{9}{8c}.$$
 
 Plugging into either expression gives the expected relationship $c = 0.75 \iff p = 0.5$ in the case of no sex bias.
+
+Both directions are implemented in `c_to_p.py` as `c_to_p(c)` and `p_to_c(p)`, and `examples/run_bottleneck_example.py` uses them to report each fitted $c$ as a proportion of females. Note that $p \in [0,1]$ constrains $c$ to $[9/16, 9/8] = [0.5625, 1.125]$; a fitted $c$ outside that range corresponds to no valid $p$ and generally indicates the X fit did not converge, so `c_to_p` raises `ValueError` rather than returning a nonsensical value.

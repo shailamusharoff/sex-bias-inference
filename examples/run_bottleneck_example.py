@@ -22,6 +22,9 @@ Pipeline
 3. The likelihood ratios LL_X1 - LL_X0 (constant sex bias) and
    LL_X2 - LL_X1 (epoch-varying sex bias) are the test statistics,
    each of which are compared to chi-squared with 1 degree of freedom.
+4. `c_to_p.c_to_p` converts each fitted c back to the proportion of
+   females it implies, so the estimates can be compared directly to the
+   PROP_FEMALES used to simulate.
 
 Requirements
 ------------
@@ -48,6 +51,7 @@ sys.path.insert(0, REPO)
 import ms_simulation_two_pops as msim
 from dadiLrtFunctions import read1DParams
 from compute_lrt_stats import lrt
+from c_to_p import c_to_p, p_to_c
 
 
 # --- demography ---------------------------------------------------------
@@ -171,18 +175,66 @@ if ll_X2 < ll_X1:
     )
 print()
 
-c_x1 = xmodels["X1"]["params"].get("c")
+# The fitted sex-bias parameter is c = NeX/NeA; c_to_p inverts Eqs. 1 and 2 of
+# the paper to report it as the proportion of females p that it implies, which
+# is directly comparable to the PROP_FEMALES used to simulate. p is only
+# meaningful when the fits converged, so it is printed after the warnings above.
+#
+# The ms simulation has 4 epochs but the fitted dadi model has 3, so the epochs
+# do not map 1:1. What does carry over: the bottleneck is the only sex-biased
+# epoch, and every other epoch shares the background value. So X2's c1
+# (background) should recover ~0.5 and its c2 (bottleneck) should recover ~0.2,
+# while X1's single c is one average over the whole history and should land
+# between the two. That averaging happens in c-space, and c -> p is nonlinear
+# (it compresses hard near the lower bound), so X1's p is NOT the average of the
+# simulated p values and can sit below both of them. X1 therefore gets no
+# simulated-p comparison printed; only the per-epoch X2 estimates do.
+P_BACKGROUND_TRUE = PROP_FEMALES[0]
+P_BOTTLENECK_TRUE = PROP_FEMALES[1]
+
+
+def report_sex_bias(label, c, expected_p=None):
+    """
+    Print a fitted c alongside the proportion of females it implies.
+
+    label: name of the parameter being reported, e.g. "X1 c"
+    c: fitted value, or None if it was missing from the .out file
+    expected_p: simulated proportion of females to compare against, or None
+    """
+    if c is None:
+        print("  {:<26} not present in the .out file".format(label + ":"))
+        return
+    try:
+        p = c_to_p(c)
+        pstr = "p = {:.4f}".format(p)
+    except ValueError as err:
+        pstr = "no valid p ({})".format(err)
+    line = "  {:<26} c = {:.4f}  ->  {}".format(label + ":", c, pstr)
+    if expected_p is not None:
+        line += "   [simulated p = {:.2f}, c = {:.4f}]".format(
+            expected_p, p_to_c(expected_p)
+        )
+    print(line)
+
+
+print("Sex bias as fitted c and as the implied proportion of females p:")
 print(
-    "Estimated constant sex-bias c (X1 model): {:.4f}  (X0 null fixes c = 0.75)".format(
-        c_x1
+    "  {:<26} c = {:.4f}  ->  p = {:.4f}   (fixed, the no-sex-bias null)".format(
+        "X0 c:", 0.75, c_to_p(0.75)
     )
 )
+report_sex_bias("X1 c (constant)", xmodels["X1"]["params"].get("c"))
 
 if best == "X2":  # epoch-varying sex bias is significant, so report c1, c2
-    print(
-        "Estimated epoch-varying sex-bias (X2 model): c1 = {:.4f}, c2 = {:.4f}".format(
-            xmodels["X2"]["params"].get("c1"), xmodels["X2"]["params"].get("c2")
-        )
+    report_sex_bias(
+        "X2 c1 (background)",
+        xmodels["X2"]["params"].get("c1"),
+        expected_p=P_BACKGROUND_TRUE,
+    )
+    report_sex_bias(
+        "X2 c2 (bottleneck)",
+        xmodels["X2"]["params"].get("c2"),
+        expected_p=P_BOTTLENECK_TRUE,
     )
 
 print()
@@ -207,4 +259,14 @@ labels = {
 }
 print("Best-supported model (alpha = {}): {} ({})".format(ALPHA, best, labels[best]))
 print("Under the male-biased bottleneck above, expect X2 (epoch-varying sex bias),")
-print("with the X1 estimate of c < 0.75.")
+print(
+    "with the X1 estimate of c < 0.75 (p < 0.5) and the X2 estimates recovering"
+)
+print(
+    "c1 ~ {:.4f} (p ~ {:.2f}) and c2 ~ {:.4f} (p ~ {:.2f}).".format(
+        p_to_c(P_BACKGROUND_TRUE),
+        P_BACKGROUND_TRUE,
+        p_to_c(P_BOTTLENECK_TRUE),
+        P_BOTTLENECK_TRUE,
+    )
+)
